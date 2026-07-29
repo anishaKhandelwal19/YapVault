@@ -53,18 +53,14 @@ Your task is to extract/generate:
 2. "definition": Write a clear, concise definition (1-2 sentences). Use **bold** for key terms.
 3. "how_it_works": Explain the mechanics, grouped concepts, or detailed notes in detail. Use Markdown bullet points or numbered lists. DO NOT write massive paragraphs.
 4. "use_cases": List 3 real-world use cases.
-5. "interview_questions": Formulate 2-4 Q&A pairs (or flashcards/exam questions) based on the goal.
-6. "common_mistakes": List 2 pitfalls or confusions.
+5. "interview_questions": Formulate Q&A pairs (or flashcards/exam questions) based on the goal. Usually generate 3-6 pairs. However, if the user explicitly requests more in the custom instructions (e.g., "give 30 questions" or "create 15 flashcards"), generate exactly that many questions.
+6. "how_to_explain": Write a comprehensive, step-by-step guide explaining how a candidate should present and explain this concept to an interviewer in a technical coding interview to impress them and stand out.
 7. "related_concepts": List 3 related topics.
 8. "ai_chat_summary": Write a concise bullet-point summary (using "• " prefix) of the most important takeaways or facts to memorize.
-9. "ai_chat_detail": If the input was a chat, clean it into Q&A. If it was notes, provide an "Important Points Extraction" or "Mind Map" representation here in clean Markdown.
+9. "ai_chat_detail": If the input was a chat, clean/structure it into the original conversation Q&A dialogue. If it was notes, provide an "Important Points Extraction" or "Mind Map" representation here in clean Markdown. Under no circumstances should you replace this with a generated list of custom questions or ignore the actual chat/notes content; the original conversation or notes must be cleaned and preserved here.
 10. "mental_model": Formulate a simple, visual analogy or mental model (e.g. "Imagine a road: Free road = cost 0, Toll road = cost 1...").
 11. "remember_this": Write a short, highly memorable formula or note (e.g., "0-1 BFS = Dijkstra + deque").
 12. "key_trick": Write a short sentence highlighting the core trick or insight that eliminates extra state/complexity (e.g., "No extra 'changed' state needed because shortest path guarantees we only keep optimal states.").
-13. "complexity_time": Time complexity of the concept, e.g. "O(V+E)".
-14. "complexity_space": Space complexity of the concept, e.g. "O(V)".
-15. "tags": 2-4 category tags, e.g. ["Graph", "BFS", "LeetCode"].
-16. "difficulty": Difficulty level: "Easy", "Medium", or "Hard".
 
 Ensure the response is fully complete, highly readable for a student, and structured exactly as specified.`;
 
@@ -96,10 +92,9 @@ Ensure the response is fully complete, highly readable for a student, and struct
               },
               description: 'Flashcards or exam questions based on the content.'
             },
-            common_mistakes: {
-              type: 'ARRAY',
-              items: { type: 'STRING' },
-              description: 'Mistakes or confusions to avoid.'
+            how_to_explain: {
+              type: 'STRING',
+              description: 'Step-by-step guide on how a candidate should explain this concept in a technical interview.'
             },
             related_concepts: {
               type: 'ARRAY',
@@ -128,7 +123,7 @@ Ensure the response is fully complete, highly readable for a student, and struct
             'how_it_works',
             'use_cases',
             'interview_questions',
-            'common_mistakes',
+            'how_to_explain',
             'related_concepts',
             'ai_chat_summary',
             'ai_chat_detail',

@@ -15,7 +15,7 @@ interface RevisionCardProps {
 }
 
 export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardProps) {
-  const [activeTab, setActiveTab] = useState<'concept' | 'prep' | 'pitfalls' | 'chat'>('concept');
+  const [activeTab, setActiveTab] = useState<'concept' | 'prep' | 'explain' | 'chat'>('concept');
   const hasAiChat = !!(card.ai_chat_summary || card.ai_chat_detail);
   const [isExporting, setIsExporting] = useState(false);
   const [isRevisedAnimating, setIsRevisedAnimating] = useState(false);
@@ -263,8 +263,8 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
           <span>Interview Prep</span>
         </button>
         <button 
-          className={`card-tab-btn pitfalls-tab ${activeTab === 'pitfalls' ? 'active' : ''}`}
-          onClick={() => setActiveTab('pitfalls')}
+          className={`card-tab-btn explain-tab ${activeTab === 'explain' ? 'active' : ''}`}
+          onClick={() => setActiveTab('explain')}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -275,12 +275,12 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
             fontSize: '0.85rem',
             fontWeight: 600,
             cursor: 'pointer',
-            color: activeTab === 'pitfalls' ? '#DC2626' : '#64748B',
+            color: activeTab === 'explain' ? '#EA580C' : '#64748B',
             borderBottom: '2px solid transparent'
           }}
         >
-          <AlertTriangle size={14} />
-          <span>Pitfalls</span>
+          <Brain size={14} />
+          <span>How to Explain</span>
         </button>
         {hasAiChat && (
           <button 
@@ -500,25 +500,24 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
           )}
         </div>
 
-        {/* Tab 3: Pitfalls & Related */}
-        <div className="tab-content-pitfalls" style={{ display: activeTab === 'pitfalls' ? 'flex' : 'none', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Common Mistakes */}
-          {card.common_mistakes && card.common_mistakes.length > 0 && (
+        {/* Tab 3: How to Explain in Interview */}
+        <div className="tab-content-explain" style={{ display: activeTab === 'explain' ? 'flex' : 'none', flexDirection: 'column', gap: '1.25rem' }}>
+          {card.how_to_explain ? (
             <div className="card-section-block">
-              <span className="card-section-title" style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Common Mistakes to Avoid</span>
-              <ul className="mistakes-list" style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {card.common_mistakes.map((mistake, i) => (
-                  <li key={i} className="mistake-item" style={{ color: '#E11D48', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                    <span style={{ color: '#334155' }}>{mistake}</span>
-                  </li>
-                ))}
-              </ul>
+              <span className="card-section-title" style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>How to explain this in an interview</span>
+              <div className="markdown-prose" style={{ fontSize: '0.92rem', lineHeight: '1.6', color: '#334155' }}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{card.how_to_explain}</ReactMarkdown>
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#94A3B8', fontSize: '0.9rem' }}>
+              No interview explanation guide available for this card.
             </div>
           )}
 
           {/* Related Concepts */}
           {card.related_concepts && card.related_concepts.length > 0 && (
-            <div className="card-section-block">
+            <div className="card-section-block" style={{ borderTop: '1px dashed #E2E8F0', paddingTop: '1.25rem' }}>
               <span className="card-section-title" style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Related Concepts</span>
               <div className="related-concepts-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {card.related_concepts.map((concept, i) => (

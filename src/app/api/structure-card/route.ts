@@ -20,11 +20,10 @@ export async function POST(request: Request) {
 
     const ai = new GoogleGenAI({ apiKey });
 
-    const prompt = `You are an expert technical learning assistant. ${
-      audioData 
-        ? "A user has just explained a concept in the attached audio recording." 
-        : `A user has just provided the following content: "${transcript}".`
-    }
+    const prompt = `You are an expert technical learning assistant. ${audioData
+      ? "A user has just explained a concept in the attached audio recording."
+      : `A user has just provided the following content: "${transcript}".`
+      }
     
     The user wants to achieve this specific learning goal:
     **${goal || 'Create Revision Notes'}**
@@ -40,24 +39,19 @@ export async function POST(request: Request) {
     5. Fill out the structured fields below to build a comprehensive Revision Card.
     
     Your task:
-    1. "title": Identify the core technical concept being discussed. ${
-      audioData 
-        ? "Listen to the audio, transcribe it, and correct any phonetic transcription errors or mispronunciations by converting them into standard software developer terminology." 
+    1. "title": Identify the core technical concept being discussed. ${audioData
+        ? "Listen to the audio, transcribe it, and correct any phonetic transcription errors or mispronunciations by converting them into standard software developer terminology."
         : "Correct any spelling or phrasing errors."
-    }
+      }
     2. "definition": Write a clear, concise definition with bold terms.
     3. "how_it_works": Explain the mechanics, grouped concepts, or detailed notes in detail. Use Markdown bullet points or numbered lists.
     4. "use_cases": List 3 real-world use cases.
-    5. "interview_questions": Formulate 2-4 Q&A pairs, flashcards, or exam questions based on the goal.
-    6. "common_mistakes": List 2 pitfalls or confusions students make.
+    5. "interview_questions": Formulate Q&A pairs, flashcards, or exam questions based on the goal. Usually generate 3-6 pairs. However, if the user explicitly requests more in the custom instructions (e.g., "give 30 questions" or "create 15 flashcards"), generate exactly that many questions .
+    6. "how_to_explain": Write a comprehensive, step-by-step guide explaining how a candidate should present and explain this concept to an interviewer in a technical coding interview to impress them and stand out.
     7. "related_concepts": List 3 closely related technical concepts.
     8. "mental_model": Formulate a simple, visual analogy or mental model (e.g. "Imagine a road: Free road = cost 0, Toll road = cost 1...").
     9. "remember_this": Write a short, highly memorable formula or note (e.g., "0-1 BFS = Dijkstra + deque").
     10. "key_trick": Write a short sentence highlighting the core trick or insight that eliminates extra state/complexity (e.g., "No extra 'changed' state needed because shortest path guarantees we only keep optimal states.").
-    11. "complexity_time": Time complexity of the concept, e.g. "O(V+E)".
-    12. "complexity_space": Space complexity of the concept, e.g. "O(V)".
-    13. "tags": 2-4 category tags, e.g. ["Graph", "BFS", "LeetCode"].
-    14. "difficulty": Difficulty level: "Easy", "Medium", or "Hard".
     
     Ensure the response is fully complete, highly readable for a student, and structured exactly as specified.`;
 
@@ -109,10 +103,9 @@ export async function POST(request: Request) {
               },
               description: 'Flashcards or exam questions based on the content.'
             },
-            common_mistakes: {
-              type: 'ARRAY',
-              items: { type: 'STRING' },
-              description: 'Mistakes or confusions to avoid.'
+            how_to_explain: {
+              type: 'STRING',
+              description: 'Step-by-step guide on how a candidate should explain this concept in a technical interview.'
             },
             related_concepts: {
               type: 'ARRAY',
@@ -133,7 +126,7 @@ export async function POST(request: Request) {
             'how_it_works',
             'use_cases',
             'interview_questions',
-            'common_mistakes',
+            'how_to_explain',
             'related_concepts',
             'mental_model',
             'remember_this',

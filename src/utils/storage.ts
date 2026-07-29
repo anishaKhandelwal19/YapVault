@@ -8,7 +8,7 @@ export interface RevisionCardData {
   how_it_works: string;
   use_cases: string[];
   interview_questions: { question: string; answer: string }[];
-  common_mistakes: string[];
+  common_mistakes?: string[];
   related_concepts: string[];
   last_revised_at: string | null;
   created_at: string;
@@ -25,6 +25,7 @@ export interface RevisionCardData {
   difficulty?: string;
   mastery_level?: 'new' | 'learning' | 'mastered';
   chat_url?: string;
+  how_to_explain?: string;
 }
 
 export interface UserStreak {
@@ -103,7 +104,8 @@ const parseSyncedCard = (c: any): RevisionCardData => {
     tags: meta.tags || c.tags || undefined,
     difficulty: meta.difficulty || c.difficulty || undefined,
     mastery_level: meta.mastery_level || c.mastery_level || 'new',
-    chat_url: meta.chat_url || c.chat_url || undefined
+    chat_url: meta.chat_url || c.chat_url || undefined,
+    how_to_explain: meta.how_to_explain || c.how_to_explain || undefined
   };
 };
 
@@ -137,7 +139,8 @@ export const saveCard = async (card: Omit<RevisionCardData, 'id' | 'created_at' 
     tags: card.tags,
     difficulty: card.difficulty,
     mastery_level: card.mastery_level || 'new',
-    chat_url: card.chat_url
+    chat_url: card.chat_url,
+    how_to_explain: card.how_to_explain
   };
 
   const serializedSummary = JSON.stringify(metaPayload);

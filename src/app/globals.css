@@ -1384,10 +1384,10 @@ body {
   color: #6D28D9 !important;
   border-bottom: 2px solid #6D28D9 !important;
 }
-.card-tab-btn.pitfalls-tab.active {
-  background: #FEE2E2 !important;
-  color: #DC2626 !important;
-  border-bottom: 2px solid #DC2626 !important;
+.card-tab-btn.explain-tab.active {
+  background: #FFEDD5 !important;
+  color: #EA580C !important;
+  border-bottom: 2px solid #EA580C !important;
 }
 .card-tab-btn.chat-tab.active {
   background: #DCFCE7 !important;

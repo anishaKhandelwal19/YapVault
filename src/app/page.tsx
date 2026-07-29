@@ -501,8 +501,8 @@ export default function Dashboard() {
         how_it_works: data.how_it_works,
         use_cases: data.use_cases,
         interview_questions: data.interview_questions,
-        common_mistakes: data.common_mistakes,
         related_concepts: data.related_concepts,
+        how_to_explain: data.how_to_explain,
       });
 
       setStreakCounter(prev => prev + 1);
@@ -545,11 +545,11 @@ export default function Dashboard() {
         how_it_works: data.how_it_works,
         use_cases: data.use_cases,
         interview_questions: data.interview_questions,
-        common_mistakes: data.common_mistakes,
         related_concepts: data.related_concepts,
         ai_chat_summary: data.ai_chat_summary,
         ai_chat_detail: data.ai_chat_detail,
         chat_url: chatUrl || undefined,
+        how_to_explain: data.how_to_explain,
       });
 
       setStreakCounter(prev => prev + 1);
@@ -723,8 +723,6 @@ export default function Dashboard() {
                 <option value="Group Similar Concepts & Summarize">Group Similar Concepts & Summarize</option>
                 <option value="Create Revision Notes">Create Revision Notes</option>
                 <option value="Create Flashcards">Create Flashcards</option>
-                <option value="Find Possible Exam Questions">Find Possible Exam Questions</option>
-                <option value="Generate Mind Map">Generate Mind Map</option>
               </select>
               <input
                 type="text"
