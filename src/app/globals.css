@@ -1353,11 +1353,9 @@ body {
   margin-bottom: 1rem;
 }
 
-/* Accordion Q&A Hidden State */
+/* Interview Q&A answer (open/closed handled in React) */
 .interview-answer {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+  overflow: visible;
   padding-top: 0;
 }
 
@@ -1367,7 +1365,8 @@ body {
 }
 
 .interview-answer.markdown-prose {
-  max-height: 1000px; /* high enough value to allow transition */
+  max-height: none;
+  overflow: visible;
   padding-top: 0.75rem;
   border-top: 1px dashed var(--border-glass);
   margin-top: 0.75rem;
@@ -1395,3 +1394,13 @@ body {
   border-bottom: 2px solid #15803D !important;
 }
 
+.card-tab-btn.askai-tab.active {
+  background: #EDE9FE !important;
+  color: #7C3AED !important;
+  border-bottom: 2px solid #7C3AED !important;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

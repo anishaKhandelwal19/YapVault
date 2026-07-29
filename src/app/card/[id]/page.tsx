@@ -177,6 +177,7 @@ export default function CardDetailPage({ params }: CardDetailPageProps) {
         card={card}
         onDelete={handleDelete}
         onRevise={loadCard}
+        onCardUpdate={loadCard}
       />
 
       {/* Profile Sidebar Drawer */}

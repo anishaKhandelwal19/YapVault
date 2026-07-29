@@ -330,6 +330,84 @@ export const updateMasteryLevel = async (id: string, mastery: 'new' | 'learning'
   return updatedCards.find(c => c.id === id)!;
 };
 
+export const updateCard = async (id: string, updates: Partial<RevisionCardData>): Promise<RevisionCardData> => {
+  if (supabase) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: currentCard, error: fetchError } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (!fetchError && currentCard) {
+        let meta: any = {};
+        let summary = currentCard.ai_chat_summary || '';
+        if (summary.trim().startsWith('{')) {
+          try {
+            meta = JSON.parse(summary);
+          } catch(e) {}
+        }
+
+        const updatedMeta = {
+          summary: updates.ai_chat_summary !== undefined ? updates.ai_chat_summary : (meta.summary || ''),
+          mental_model: updates.mental_model !== undefined ? updates.mental_model : meta.mental_model,
+          remember_this: updates.remember_this !== undefined ? updates.remember_this : meta.remember_this,
+          key_trick: updates.key_trick !== undefined ? updates.key_trick : meta.key_trick,
+          complexity_time: updates.complexity_time !== undefined ? updates.complexity_time : meta.complexity_time,
+          complexity_space: updates.complexity_space !== undefined ? updates.complexity_space : meta.complexity_space,
+          tags: updates.tags !== undefined ? updates.tags : meta.tags,
+          difficulty: updates.difficulty !== undefined ? updates.difficulty : meta.difficulty,
+          mastery_level: updates.mastery_level !== undefined ? updates.mastery_level : (meta.mastery_level || 'new'),
+          chat_url: updates.chat_url !== undefined ? updates.chat_url : meta.chat_url,
+          how_to_explain: updates.how_to_explain !== undefined ? updates.how_to_explain : meta.how_to_explain,
+          repetition_count: updates.repetition_count !== undefined ? updates.repetition_count : (meta.repetition_count || 0),
+          folder_path: updates.folder_path !== undefined ? updates.folder_path : (meta.folder_path || "/")
+        };
+
+        const serializedSummary = JSON.stringify(updatedMeta);
+
+        const updatePayload: any = {
+          ai_chat_summary: serializedSummary
+        };
+        if (updates.title !== undefined) updatePayload.title = updates.title;
+        if (updates.definition !== undefined) updatePayload.definition = updates.definition;
+        if (updates.how_it_works !== undefined) updatePayload.how_it_works = updates.how_it_works;
+        if (updates.use_cases !== undefined) updatePayload.use_cases = updates.use_cases;
+        if (updates.interview_questions !== undefined) updatePayload.interview_questions = updates.interview_questions;
+        if (updates.common_mistakes !== undefined) updatePayload.common_mistakes = updates.common_mistakes;
+        if (updates.related_concepts !== undefined) updatePayload.related_concepts = updates.related_concepts;
+        if (updates.ai_chat_detail !== undefined) updatePayload.ai_chat_detail = updates.ai_chat_detail;
+        if (updates.last_revised_at !== undefined) updatePayload.last_revised_at = updates.last_revised_at;
+
+        const { data, error } = await supabase
+          .from('cards')
+          .update(updatePayload)
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (!error && data) {
+          return parseSyncedCard(data);
+        }
+      }
+    }
+  }
+
+  const cards = getLocalCardsOnly();
+  const updatedCards = cards.map(c => {
+    if (c.id === id) {
+      return {
+        ...c,
+        ...updates
+      };
+    }
+    return c;
+  });
+  localStorage.setItem(CARDS_KEY, JSON.stringify(updatedCards));
+  return updatedCards.find(c => c.id === id)!;
+};
+
 export const getStreak = async (): Promise<UserStreak> => {
   if (supabase) {
     const { data: { user } } = await supabase.auth.getUser();
