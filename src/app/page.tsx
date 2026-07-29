@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [chatText, setChatText] = useState('');
+  const [chatUrl, setChatUrl] = useState('');
   const [goal, setGoal] = useState('Create Revision Notes');
   const [customInstruction, setCustomInstruction] = useState('');
   const MAX_CHAT_CHARS = 50000;
@@ -548,10 +549,12 @@ export default function Dashboard() {
         related_concepts: data.related_concepts,
         ai_chat_summary: data.ai_chat_summary,
         ai_chat_detail: data.ai_chat_detail,
+        chat_url: chatUrl || undefined,
       });
 
       setStreakCounter(prev => prev + 1);
       setChatText('');
+      setChatUrl('');
     } catch (err: any) {
       console.error(err);
       setApiError(err.message || 'An error occurred during AI chat structuring.');
@@ -908,6 +911,27 @@ export default function Dashboard() {
                   }}>
                     {chatText.length.toLocaleString()} / {MAX_CHAT_CHARS.toLocaleString()}
                   </div>
+                  
+                  <input
+                    type="url"
+                    placeholder="Optional: Paste chat URL (e.g., https://chatgpt.com/share/...)"
+                    value={chatUrl}
+                    onChange={(e) => setChatUrl(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 1rem',
+                      borderRadius: '8px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border-glass)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      fontFamily: 'var(--font-sans)',
+                      boxSizing: 'border-box',
+                      marginBottom: '0.5rem',
+                      outline: 'none',
+                      transition: 'all 0.2s ease'
+                    }}
+                  />
                 </div>
               </>
             )}
@@ -927,6 +951,7 @@ export default function Dashboard() {
                   setAudioBase64(null);
                   setAudioMimeType('');
                   setChatText('');
+                  setChatUrl('');
                 }}
                 disabled={
                   (inputMode === 'text' && !transcript) ||

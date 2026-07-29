@@ -24,6 +24,7 @@ export interface RevisionCardData {
   tags?: string[];
   difficulty?: string;
   mastery_level?: 'new' | 'learning' | 'mastered';
+  chat_url?: string;
 }
 
 export interface UserStreak {
@@ -101,7 +102,8 @@ const parseSyncedCard = (c: any): RevisionCardData => {
     complexity_space: meta.complexity_space || c.complexity_space || undefined,
     tags: meta.tags || c.tags || undefined,
     difficulty: meta.difficulty || c.difficulty || undefined,
-    mastery_level: meta.mastery_level || c.mastery_level || 'new'
+    mastery_level: meta.mastery_level || c.mastery_level || 'new',
+    chat_url: meta.chat_url || c.chat_url || undefined
   };
 };
 
@@ -134,7 +136,8 @@ export const saveCard = async (card: Omit<RevisionCardData, 'id' | 'created_at' 
     complexity_space: card.complexity_space,
     tags: card.tags,
     difficulty: card.difficulty,
-    mastery_level: card.mastery_level || 'new'
+    mastery_level: card.mastery_level || 'new',
+    chat_url: card.chat_url
   };
 
   const serializedSummary = JSON.stringify(metaPayload);
@@ -293,29 +296,6 @@ export const updateMasteryLevel = async (id: string, mastery: 'new' | 'learning'
   });
   localStorage.setItem(CARDS_KEY, JSON.stringify(updatedCards));
   return updatedCards.find(c => c.id === id)!;
-};
-
-  // Local fallback
-  const cards = getLocalCardsOnly();
-  let streakUpdated = false;
-  const updatedCards = cards.map(c => {
-    if (c.id === id) {
-      streakUpdated = true;
-      return {
-        ...c,
-        last_revised_at: new Date().toISOString()
-      };
-    }
-    return c;
-  });
-  
-  localStorage.setItem(CARDS_KEY, JSON.stringify(updatedCards));
-  if (streakUpdated) {
-    await updateStreak();
-  }
-  
-  const updatedCard = updatedCards.find(c => c.id === id)!;
-  return { card: updatedCard, streakUpdated };
 };
 
 export const getStreak = async (): Promise<UserStreak> => {

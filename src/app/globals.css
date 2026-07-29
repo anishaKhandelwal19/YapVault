@@ -5,21 +5,21 @@
   /* ==========================================================================
      LIGHT THEME (Default)
      ========================================================================== */
-  --bg-primary: #F5F0E8; /* Warm cream background */
-  --bg-secondary: #FDFAF5; /* Soft white cards */
-  --bg-tertiary: #EAE3D5; /* Muted cream for inputs/panels */
-  --border-glass: rgba(125, 155, 118, 0.15); /* Sage green border hint */
-  --border-glow: rgba(125, 155, 118, 0.35);
+  --bg-primary: #F8FAFC; /* Soft grey, reduces eye strain */
+  --bg-secondary: #FFFFFF; /* Sleek white cards */
+  --bg-tertiary: #F1F5F9; /* Muted grey for inputs/panels */
+  --border-glass: #E2E8F0; /* Clean borders */
+  --border-glow: rgba(37, 99, 235, 0.2);
   
-  --accent-primary: #7D9B76; /* Sage green accents */
-  --accent-secondary: #7B9BB5; /* Muted blue revised tag */
-  --accent-cyan: #7B9BB5; /* Muted blue secondary */
-  --accent-success: #7D9B76; /* Sage green success */
-  --accent-warning: #d97706; /* Amber warning */
+  --accent-primary: #2563EB; /* Blue primary accent */
+  --accent-secondary: #7C3AED; /* Purple secondary accent */
+  --accent-cyan: #06B6D4;
+  --accent-success: #16A34A; /* Green success */
+  --accent-warning: #D97706; /* Amber warning */
   
-  --text-primary: #2C2C2C; /* Deep charcoal headings */
-  --text-secondary: #4A4A4A; /* Charcoal body text */
-  --text-muted: #7F7F7F; /* Muted grey details */
+  --text-primary: #0F172A; /* Slate 900 headings */
+  --text-secondary: #334155; /* Slate 700 body text */
+  --text-muted: #64748B; /* Slate 500 muted text */
   
   /* Gradients */
   --grad-primary: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
@@ -1371,5 +1371,27 @@ body {
   padding-top: 0.75rem;
   border-top: 1px dashed var(--border-glass);
   margin-top: 0.75rem;
+}
+
+/* Active status tabs colors matching user requirement */
+.card-tab-btn.concept-tab.active {
+  background: #DBEAFE !important;
+  color: #1D4ED8 !important;
+  border-bottom: 2px solid #1D4ED8 !important;
+}
+.card-tab-btn.prep-tab.active {
+  background: #EDE9FE !important;
+  color: #6D28D9 !important;
+  border-bottom: 2px solid #6D28D9 !important;
+}
+.card-tab-btn.pitfalls-tab.active {
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
+  border-bottom: 2px solid #DC2626 !important;
+}
+.card-tab-btn.chat-tab.active {
+  background: #DCFCE7 !important;
+  color: #15803D !important;
+  border-bottom: 2px solid #15803D !important;
 }
 

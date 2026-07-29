@@ -58,6 +58,13 @@ Your task is to extract/generate:
 7. "related_concepts": List 3 related topics.
 8. "ai_chat_summary": Write a concise bullet-point summary (using "• " prefix) of the most important takeaways or facts to memorize.
 9. "ai_chat_detail": If the input was a chat, clean it into Q&A. If it was notes, provide an "Important Points Extraction" or "Mind Map" representation here in clean Markdown.
+10. "mental_model": Formulate a simple, visual analogy or mental model (e.g. "Imagine a road: Free road = cost 0, Toll road = cost 1...").
+11. "remember_this": Write a short, highly memorable formula or note (e.g., "0-1 BFS = Dijkstra + deque").
+12. "key_trick": Write a short sentence highlighting the core trick or insight that eliminates extra state/complexity (e.g., "No extra 'changed' state needed because shortest path guarantees we only keep optimal states.").
+13. "complexity_time": Time complexity of the concept, e.g. "O(V+E)".
+14. "complexity_space": Space complexity of the concept, e.g. "O(V)".
+15. "tags": 2-4 category tags, e.g. ["Graph", "BFS", "LeetCode"].
+16. "difficulty": Difficulty level: "Easy", "Medium", or "Hard".
 
 Ensure the response is fully complete, highly readable for a student, and structured exactly as specified.`;
 
@@ -106,7 +113,14 @@ Ensure the response is fully complete, highly readable for a student, and struct
             ai_chat_detail: {
               type: 'STRING',
               description: 'Curated Q&A, important extraction, or markdown mind-map representation.'
-            }
+            },
+            mental_model: { type: 'STRING', description: 'A short visual analogy or mental model.' },
+            remember_this: { type: 'STRING', description: 'A short, highly memorable formula or note.' },
+            key_trick: { type: 'STRING', description: 'A short sentence highlighting the core trick or insight.' },
+            complexity_time: { type: 'STRING', description: 'Time complexity, e.g. O(V+E)' },
+            complexity_space: { type: 'STRING', description: 'Space complexity, e.g. O(V)' },
+            tags: { type: 'ARRAY', items: { type: 'STRING' }, description: '2-4 category tags.' },
+            difficulty: { type: 'STRING', description: 'Difficulty level: Easy, Medium, or Hard.' }
           },
           required: [
             'title',
@@ -117,7 +131,14 @@ Ensure the response is fully complete, highly readable for a student, and struct
             'common_mistakes',
             'related_concepts',
             'ai_chat_summary',
-            'ai_chat_detail'
+            'ai_chat_detail',
+            'mental_model',
+            'remember_this',
+            'key_trick',
+            'complexity_time',
+            'complexity_space',
+            'tags',
+            'difficulty'
           ]
         }
       }

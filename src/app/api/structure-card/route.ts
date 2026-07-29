@@ -51,6 +51,13 @@ export async function POST(request: Request) {
     5. "interview_questions": Formulate 2-4 Q&A pairs, flashcards, or exam questions based on the goal.
     6. "common_mistakes": List 2 pitfalls or confusions students make.
     7. "related_concepts": List 3 closely related technical concepts.
+    8. "mental_model": Formulate a simple, visual analogy or mental model (e.g. "Imagine a road: Free road = cost 0, Toll road = cost 1...").
+    9. "remember_this": Write a short, highly memorable formula or note (e.g., "0-1 BFS = Dijkstra + deque").
+    10. "key_trick": Write a short sentence highlighting the core trick or insight that eliminates extra state/complexity (e.g., "No extra 'changed' state needed because shortest path guarantees we only keep optimal states.").
+    11. "complexity_time": Time complexity of the concept, e.g. "O(V+E)".
+    12. "complexity_space": Space complexity of the concept, e.g. "O(V)".
+    13. "tags": 2-4 category tags, e.g. ["Graph", "BFS", "LeetCode"].
+    14. "difficulty": Difficulty level: "Easy", "Medium", or "Hard".
     
     Ensure the response is fully complete, highly readable for a student, and structured exactly as specified.`;
 
@@ -111,7 +118,14 @@ export async function POST(request: Request) {
               type: 'ARRAY',
               items: { type: 'STRING' },
               description: 'Related technical topics.'
-            }
+            },
+            mental_model: { type: 'STRING', description: 'A short visual analogy or mental model.' },
+            remember_this: { type: 'STRING', description: 'A short, highly memorable formula or note.' },
+            key_trick: { type: 'STRING', description: 'A short sentence highlighting the core trick or insight.' },
+            complexity_time: { type: 'STRING', description: 'Time complexity, e.g. O(V+E)' },
+            complexity_space: { type: 'STRING', description: 'Space complexity, e.g. O(V)' },
+            tags: { type: 'ARRAY', items: { type: 'STRING' }, description: '2-4 category tags.' },
+            difficulty: { type: 'STRING', description: 'Difficulty level: Easy, Medium, or Hard.' }
           },
           required: [
             'title',
@@ -120,7 +134,14 @@ export async function POST(request: Request) {
             'use_cases',
             'interview_questions',
             'common_mistakes',
-            'related_concepts'
+            'related_concepts',
+            'mental_model',
+            'remember_this',
+            'key_trick',
+            'complexity_time',
+            'complexity_space',
+            'tags',
+            'difficulty'
           ]
         }
       }
