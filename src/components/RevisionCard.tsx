@@ -8,6 +8,23 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { RevisionCardData, markRevised, updateMasteryLevel } from '../utils/storage';
 
+const preprocessMarkdown = (text: string | undefined | null): string => {
+  if (!text) return '';
+  let cleaned = text
+    .replace(/<ul>/g, '\n')
+    .replace(/<\/ul>/g, '\n')
+    .replace(/<ol>/g, '\n')
+    .replace(/<\/ol>/g, '\n')
+    .replace(/<li>/g, '\n- ')
+    .replace(/<\/li>/g, '')
+    .replace(/<p>/g, '\n\n')
+    .replace(/<\/p>/g, '\n\n')
+    .replace(/<br\s*\/?>/g, '\n');
+
+  cleaned = cleaned.replace(/([^\n])\s+(\d+\.\s+)/g, '$1\n$2');
+  return cleaned;
+};
+
 interface RevisionCardProps {
   card: RevisionCardData;
   onDelete: (id: string) => void;
@@ -316,7 +333,7 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
             <div style={{ flex: 1 }}>
               <strong style={{ display: 'block', fontSize: '0.85rem', color: '#64748B', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.2rem' }}>Definition</strong>
               <div className="markdown-prose" style={{ fontSize: '0.95rem', lineHeight: '1.6', color: '#0F172A' }}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{card.definition}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdown(card.definition)}</ReactMarkdown>
               </div>
             </div>
           </div>
@@ -421,7 +438,7 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
             <div className="card-section-block" style={{ marginTop: '0.5rem' }}>
               <span className="card-section-title" style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Details / Mechanics</span>
               <div className="markdown-prose" style={{ fontSize: '0.95rem', lineHeight: '1.7', color: '#334155' }}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{card.how_it_works}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdown(card.how_it_works)}</ReactMarkdown>
               </div>
             </div>
           )}
@@ -476,7 +493,7 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
                         color: '#334155',
                         lineHeight: '1.6'
                       }} onClick={(e) => e.stopPropagation()}>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{item.answer}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdown(item.answer)}</ReactMarkdown>
                       </div>
                     ) : (
                       <p style={{ fontSize: '0.75rem', color: '#94A3B8', fontStyle: 'italic', margin: '0.35rem 0 0 0' }}>Click to reveal answer...</p>
@@ -494,7 +511,7 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
             <div className="card-section-block">
               <span className="card-section-title" style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>How to explain this in an interview</span>
               <div className="markdown-prose" style={{ fontSize: '0.92rem', lineHeight: '1.6', color: '#334155' }}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{card.how_to_explain}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdown(card.how_to_explain)}</ReactMarkdown>
               </div>
             </div>
           ) : (
@@ -594,7 +611,7 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
                           color: isQuestion ? '#0F172A' : '#14532D',
                           lineHeight: '1.6'
                         }}>
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{content}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdown(content)}</ReactMarkdown>
                         </div>
                       </div>
                     );

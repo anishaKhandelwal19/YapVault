@@ -41,12 +41,14 @@ The user wants to achieve this specific learning goal:
 Additional custom instructions from the user:
 **${customInstruction || 'None'}**
 
-Generate output according to these rules, adapting your tone and focus to perfectly match the user's goal and instructions:
-1. Format your text using Markdown. Use **bold** heavily for key terms, use bullet points instead of long paragraphs, and keep explanations concise (not too large, not too small, best fit for revision).
-2. If the goal is "Explain Like Teacher", use analogies and simple language.
-3. If the goal is "Concept Grouping", group related concepts clearly.
-4. If the goal is "Flashcard Mode" or "Exam Questions", focus heavily on the 'interview_questions' output.
-5. Fill out the structured fields below to build a comprehensive Revision Card.
+    Generate output according to these rules, adapting your tone and focus to perfectly match the user's goal and instructions:
+    1. Format your text using Markdown. Use **bold** heavily for key terms, use bullet points instead of long paragraphs, and keep explanations concise (not too large, not too small, best fit for revision).
+    2. NEVER output HTML tags (such as <ul>, <li>, <ol>, <p>, <br>). ONLY use standard Markdown syntax (such as -, *, 1., 2.).
+    3. Ensure every list item, bullet point, or numbered step starts on its own line (separated by double newlines \n\n or single newlines \n). Do not smash numbered points together into a single line or paragraph.
+    4. If the goal is "Explain Like Teacher", use analogies and simple language.
+    5. If the goal is "Concept Grouping", group related concepts clearly.
+    6. If the goal is "Flashcard Mode" or "Exam Questions", focus heavily on the 'interview_questions' output.
+    7. Fill out the structured fields below to build a comprehensive Revision Card.
 
 Your task is to extract/generate:
 1. "title": Identify the core topic.
