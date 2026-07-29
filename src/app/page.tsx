@@ -15,7 +15,12 @@ import {
   Calendar,
   Sun,
   Moon,
-  MessageSquareText
+  MessageSquareText,
+  Folder,
+  FolderOpen,
+  ChevronRight,
+  ChevronDown,
+  Home
 } from 'lucide-react';
 import MotivationWidget from '../components/MotivationWidget';
 import AudioWaveform from '../components/AudioWaveform';
@@ -27,7 +32,59 @@ import {
   deleteCard, 
   clientSearchCards, 
   RevisionCardData 
-} from '../utils/storage';
+} from '../utils/storage';interface DirectoryNode {
+  name: string;
+  path: string;
+  subfolders: Record<string, DirectoryNode>;
+  cardCount: number;
+}
+
+const buildDirectoryTree = (cardsList: RevisionCardData[]): DirectoryNode => {
+  const root: DirectoryNode = {
+    name: 'Root',
+    path: '/',
+    subfolders: {},
+    cardCount: 0
+  };
+
+  cardsList.forEach(card => {
+    // Standardize folder path
+    let rawPath = card.folder_path || '/';
+    rawPath = rawPath.trim();
+    if (rawPath.startsWith('/')) {
+      rawPath = rawPath.slice(1);
+    }
+    if (rawPath.endsWith('/')) {
+      rawPath = rawPath.slice(0, -1);
+    }
+
+    if (rawPath === '' || rawPath === '/') {
+      root.cardCount++;
+      return;
+    }
+
+    const parts = rawPath.split('/').filter(Boolean);
+    let current = root;
+    root.cardCount++; // Root aggregates all cards
+
+    let currentPath = '';
+    parts.forEach((part) => {
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      if (!current.subfolders[part]) {
+        current.subfolders[part] = {
+          name: part,
+          path: currentPath,
+          subfolders: {},
+          cardCount: 0
+        };
+      }
+      current = current.subfolders[part];
+      current.cardCount++;
+    });
+  });
+
+  return root;
+};
 
 export default function Dashboard() {
   const [cards, setCards] = useState<RevisionCardData[]>([]);
@@ -58,6 +115,11 @@ export default function Dashboard() {
   // Theme & Profile Auth States
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [user, setUser] = useState<any>(null);
+  
+  // Folder/Directory Organization States
+  const [creationFolder, setCreationFolder] = useState('');
+  const [selectedFolder, setSelectedFolder] = useState('/');
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // MediaRecorder & Deepgram WebSocket refs
@@ -108,11 +170,22 @@ export default function Dashboard() {
     }
   }, [streakCounter, user]);
 
-  // Filter cards when search filter query changes
+  // Filter cards when search filter query or selected folder changes
   useEffect(() => {
-    const results = clientSearchCards(filterQuery, cards);
+    let results = cards;
+    
+    // Filter by Folder Path
+    if (selectedFolder !== '/') {
+      results = results.filter(card => {
+        const path = card.folder_path || '/';
+        return path === selectedFolder || path.startsWith(selectedFolder + '/');
+      });
+    }
+    
+    // Filter by search query
+    results = clientSearchCards(filterQuery, results);
     setFilteredCards(results);
-  }, [filterQuery, cards]);
+  }, [filterQuery, selectedFolder, cards]);
 
   // Handle Theme Toggle
   const toggleTheme = () => {
@@ -503,6 +576,7 @@ export default function Dashboard() {
         interview_questions: data.interview_questions,
         related_concepts: data.related_concepts,
         how_to_explain: data.how_to_explain,
+        folder_path: creationFolder.trim() || "/",
       });
 
       setStreakCounter(prev => prev + 1);
@@ -550,6 +624,7 @@ export default function Dashboard() {
         ai_chat_detail: data.ai_chat_detail,
         chat_url: chatUrl || undefined,
         how_to_explain: data.how_to_explain,
+        folder_path: creationFolder.trim() || "/",
       });
 
       setStreakCounter(prev => prev + 1);
@@ -586,7 +661,159 @@ export default function Dashboard() {
     }
   };
 
+  const uniqueFolders = Array.from(
+    new Set(
+      cards
+        .map(card => {
+          let p = card.folder_path || '/';
+          p = p.trim();
+          if (p.startsWith('/')) p = p.slice(1);
+          if (p.endsWith('/')) p = p.slice(0, -1);
+          return p;
+        })
+        .filter((path): path is string => !!path && path !== '' && path !== '/')
+    )
+  ).sort();
+
+  const directoryTree = buildDirectoryTree(cards);
+
+  // Filter cards to only show direct items and subfolders (Notion-style navigation)
+  const isSearchActive = !!filterQuery;
+
+  // Direct cards in the selected directory
+  const directCards = cards.filter(card => {
+    let p = card.folder_path || '/';
+    p = p.trim();
+    if (p !== '/' && p.startsWith('/')) p = p.slice(1);
+    if (p !== '/' && p.endsWith('/')) p = p.slice(0, -1);
+    
+    let sel = selectedFolder;
+    if (sel !== '/' && sel.startsWith('/')) sel = sel.slice(1);
+    if (sel !== '/' && sel.endsWith('/')) sel = sel.slice(0, -1);
+
+    return p === sel;
+  });
+
+  // Calculate immediate subfolders in the selected directory
+  const immediateSubfoldersMap: Record<string, { path: string; count: number }> = {};
+  cards.forEach(card => {
+    let p = card.folder_path || '/';
+    p = p.trim();
+    if (p !== '/' && p.startsWith('/')) p = p.slice(1);
+    if (p !== '/' && p.endsWith('/')) p = p.slice(0, -1);
+
+    let sel = selectedFolder;
+    if (sel !== '/' && sel.startsWith('/')) sel = sel.slice(1);
+    if (sel !== '/' && sel.endsWith('/')) sel = sel.slice(0, -1);
+
+    if (p === '/' || p === sel) return;
+
+    if (sel === '/') {
+      const firstPart = p.split('/')[0];
+      if (firstPart) {
+        if (!immediateSubfoldersMap[firstPart]) {
+          immediateSubfoldersMap[firstPart] = { path: firstPart, count: 0 };
+        }
+        immediateSubfoldersMap[firstPart].count++;
+      }
+    } else {
+      if (p.startsWith(sel + '/')) {
+        const relativePath = p.slice(sel.length + 1);
+        const nextPart = relativePath.split('/')[0];
+        if (nextPart) {
+          const fullPath = `${sel}/${nextPart}`;
+          if (!immediateSubfoldersMap[nextPart]) {
+            immediateSubfoldersMap[nextPart] = { path: fullPath, count: 0 };
+          }
+          immediateSubfoldersMap[nextPart].count++;
+        }
+      }
+    }
+  });
+
+  const immediateSubfolders = Object.entries(immediateSubfoldersMap).map(([name, info]) => ({
+    name,
+    path: info.path,
+    count: info.count
+  })).sort((a, b) => a.name.localeCompare(b.name));
+
   const userInitial = user?.email ? user.email.charAt(0).toUpperCase() : 'U';
+
+  const renderDirectoryNode = (node: DirectoryNode, depth = 0) => {
+    const isExpanded = expandedFolders[node.path];
+    const subfolderKeys = Object.keys(node.subfolders);
+    const hasSubfolders = subfolderKeys.length > 0;
+    const isSelected = selectedFolder === node.path;
+
+    return (
+      <div key={node.path} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+        <div 
+          onClick={() => setSelectedFolder(node.path)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '0.35rem 0.5rem',
+            paddingLeft: `${depth * 0.75 + 0.5}rem`,
+            borderRadius: '6px',
+            background: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+            borderLeft: isSelected ? '3px solid var(--accent-primary)' : '3px solid transparent',
+            color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)',
+            fontSize: '0.88rem',
+            fontWeight: isSelected ? 600 : 500,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+          className="folder-tree-row"
+        >
+          {hasSubfolders ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpandedFolders(prev => ({ ...prev, [node.path]: !prev[node.path] }));
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                width: '16px',
+                height: '16px'
+              }}
+            >
+              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </button>
+          ) : (
+            <div style={{ width: '16px' }} />
+          )}
+
+          {isExpanded ? (
+            <FolderOpen size={16} style={{ color: '#eab308' }} />
+          ) : (
+            <Folder size={16} style={{ color: '#eab308' }} />
+          )}
+
+          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {node.name}
+          </span>
+          
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.03)', padding: '0.1rem 0.35rem', borderRadius: '10px' }}>
+            {node.cardCount}
+          </span>
+        </div>
+
+        {hasSubfolders && isExpanded && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+            {subfolderKeys.map(key => renderDirectoryNode(node.subfolders[key], depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <main className="dashboard-container">
@@ -638,6 +865,55 @@ export default function Dashboard() {
           
           {/* Motivation Quote & Streak Widget */}
           <MotivationWidget streakUpdateCounter={streakCounter} />
+
+          {/* Directory Explorer Widget */}
+          <div className="glass-panel directory-explorer-panel" style={{ padding: '1.25rem' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              📁 Directory Explorer
+            </h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              {/* Root / All cards row */}
+              <div 
+                onClick={() => setSelectedFolder('/')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.35rem 0.5rem',
+                  borderRadius: '6px',
+                  background: selectedFolder === '/' ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                  borderLeft: selectedFolder === '/' ? '3px solid var(--accent-primary)' : '3px solid transparent',
+                  color: selectedFolder === '/' ? 'var(--accent-primary)' : 'var(--text-primary)',
+                  fontSize: '0.88rem',
+                  fontWeight: selectedFolder === '/' ? 600 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  marginBottom: '0.25rem'
+                }}
+              >
+                <div style={{ width: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Home size={14} style={{ color: 'var(--text-muted)' }} />
+                </div>
+                <FolderOpen size={16} style={{ color: '#eab308' }} />
+                <span style={{ flex: 1 }}>All Vault Cards</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.03)', padding: '0.1rem 0.35rem', borderRadius: '10px' }}>
+                  {cards.length}
+                </span>
+              </div>
+
+              {/* Render top level folders recursively */}
+              {Object.keys(directoryTree.subfolders).length > 0 ? (
+                Object.keys(directoryTree.subfolders).map(key => 
+                  renderDirectoryNode(directoryTree.subfolders[key], 0)
+                )
+              ) : (
+                <div style={{ padding: '0.5rem', fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center' }}>
+                  No folders created yet. Specify a path when creating a card.
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Concept Input Panel */}
           <div className="glass-panel recording-panel">
@@ -741,6 +1017,36 @@ export default function Dashboard() {
                   fontFamily: 'var(--font-sans)',
                 }}
               />
+            </div>
+
+            {/* Folder Selection / Path Input */}
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1.25rem' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                📁 Vault Location (Folder Path)
+              </span>
+              <input
+                type="text"
+                value={creationFolder}
+                onChange={(e) => setCreationFolder(e.target.value)}
+                placeholder="Root (or e.g. dsa/graphs, frontend/react)"
+                list="existing-folders"
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 1rem',
+                  borderRadius: '8px',
+                  background: 'rgba(0,0,0,0.02)',
+                  border: '1px solid var(--border-glass)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9rem',
+                  fontFamily: 'var(--font-sans)',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <datalist id="existing-folders">
+                {uniqueFolders.map(folder => (
+                  <option key={folder} value={folder} />
+                ))}
+              </datalist>
             </div>
 
             {inputMode === 'voice' ? (
@@ -1071,81 +1377,259 @@ export default function Dashboard() {
           </div>
 
           {/* Cards Container */}
-          <div className="section-header">
-            <h3 className="section-title">My Vault ({filteredCards.length} cards)</h3>
+          <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <h3 className="section-title">
+                {isSearchActive 
+                  ? `Search Results` 
+                  : (selectedFolder === '/' ? 'All Vault Cards' : selectedFolder.split('/').pop())
+                }
+                {!isSearchActive && (
+                  <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                    ({directCards.length} cards, {immediateSubfolders.length} folders)
+                  </span>
+                )}
+              </h3>
+              {/* Folder Breadcrumbs */}
+              {selectedFolder !== '/' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.82rem', color: 'var(--accent-primary)', flexWrap: 'wrap' }}>
+                  <span 
+                    style={{ cursor: 'pointer', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '3px', textDecoration: 'underline' }} 
+                    onClick={() => setSelectedFolder('/')}
+                  >
+                    <Home size={12} /> Vault
+                  </span>
+                  {selectedFolder.split('/').filter(Boolean).map((part, index, arr) => {
+                    const path = arr.slice(0, index + 1).join('/');
+                    return (
+                      <React.Fragment key={path}>
+                        <span style={{ color: 'var(--text-muted)' }}>/</span>
+                        <span 
+                          style={{ cursor: 'pointer', fontWeight: index === arr.length - 1 ? 600 : 400, textDecoration: 'underline' }} 
+                          onClick={() => setSelectedFolder(path)}
+                        >
+                          {part}
+                        </span>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               Click card to expand details
             </span>
           </div>
 
           <div className="cards-container">
-            {filteredCards.length > 0 ? (
-              filteredCards.map(card => {
-                const status = getRevisionStatusText(card.last_revised_at);
-                return (
-                  <Link 
-                    href={`/card/${card.id}`} 
-                    key={card.id} 
-                    style={{ textDecoration: 'none', color: 'inherit' }}
-                  >
-                    <div className="glass-panel card-outer hover-scale-card">
-                      <div className="card-header-bar" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div className="card-title-group">
-                          <span className="card-tag">Revision Card</span>
-                          <h2 className="card-title" style={{ fontSize: '1.25rem', marginTop: '0.2rem' }}>{card.title}</h2>
+            {isSearchActive ? (
+              filteredCards.length > 0 ? (
+                filteredCards.map(card => {
+                  const status = getRevisionStatusText(card.last_revised_at);
+                  return (
+                    <Link 
+                      href={`/card/${card.id}`} 
+                      key={card.id} 
+                      style={{ textDecoration: 'none', color: 'inherit' }}
+                    >
+                      <div className="glass-panel card-outer hover-scale-card">
+                        <div className="card-header-bar" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div className="card-title-group">
+                            <span className="card-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              📁 {card.folder_path && card.folder_path !== '/' ? card.folder_path : 'Root'}
+                            </span>
+                            <h2 className="card-title" style={{ fontSize: '1.25rem', marginTop: '0.2rem' }}>{card.title}</h2>
+                          </div>
+                          <div className="card-actions-top">
+                            <button 
+                              className="icon-btn delete" 
+                              onClick={(e) => {
+                                e.preventDefault(); // prevent navigation
+                                e.stopPropagation(); // stop click bubbling
+                                handleDelete(card.id);
+                              }} 
+                              title="Delete card"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="card-actions-top">
-                          <button 
-                            className="icon-btn delete" 
-                            onClick={(e) => {
-                              e.preventDefault(); // prevent navigation
-                              e.stopPropagation(); // stop click bubbling
-                              handleDelete(card.id);
-                            }} 
-                            title="Delete card"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                        
+                        <div 
+                          className="card-footer" 
+                          style={{ 
+                            borderTop: '1px solid var(--border-glass)', 
+                            padding: '0.85rem 1.5rem', 
+                            background: 'rgba(0, 0, 0, 0.03)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          <div className={`revise-indicator ${status.isDue ? 'due' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <Calendar size={14} />
+                            <span>{status.text}</span>
+                          </div>
+                          <span style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.75rem' }}>
+                            View Details →
+                          </span>
                         </div>
                       </div>
-                      
-                      <div 
-                        className="card-footer" 
-                        style={{ 
-                          borderTop: '1px solid var(--border-glass)', 
-                          padding: '0.85rem 1.5rem', 
-                          background: 'rgba(0, 0, 0, 0.03)',
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="glass-panel empty-state">
+                  <div className="empty-state-icon">
+                    <BookOpen size={32} />
+                  </div>
+                  <h4 style={{ fontWeight: 600 }}>No Revision Cards Found</h4>
+                  <p style={{ fontSize: '0.85rem', maxHeight: '80px', maxWidth: '320px' }}>
+                    {searchQuery 
+                      ? "Try adjusting your search query, or double check spelling."
+                      : "Your vault is empty. Record your first study concept using the microphone panel on the left!"
+                    }
+                  </p>
+                </div>
+              )
+            ) : (
+              <>
+                {/* 1. Subfolders Grid */}
+                {immediateSubfolders.length > 0 && (
+                  <div 
+                    style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
+                      gap: '1rem', 
+                      width: '100%',
+                      marginBottom: '1.5rem'
+                    }}
+                  >
+                    {immediateSubfolders.map(subfolder => (
+                      <div
+                        key={subfolder.path}
+                        onClick={() => setSelectedFolder(subfolder.path)}
+                        className="glass-panel"
+                        style={{
+                          padding: '1rem',
                           display: 'flex',
-                          justifyContent: 'space-between',
                           alignItems: 'center',
-                          fontSize: '0.8rem'
+                          gap: '0.75rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          borderRadius: '12px',
+                          border: '1px solid var(--border-glass)',
+                          background: 'var(--bg-secondary)',
+                          boxSizing: 'border-box'
                         }}
                       >
-                        <div className={`revise-indicator ${status.isDue ? 'due' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <Calendar size={14} />
-                          <span>{status.text}</span>
+                        <div 
+                          style={{ 
+                            background: 'rgba(37, 99, 235, 0.08)', 
+                            padding: '0.5rem', 
+                            borderRadius: '8px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center' 
+                          }}
+                        >
+                          <Folder size={18} style={{ color: '#eab308' }} />
                         </div>
-                        <span style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.75rem' }}>
-                          View Details →
-                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div 
+                            style={{ 
+                              fontWeight: 600, 
+                              fontSize: '0.9rem', 
+                              color: 'var(--text-primary)',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}
+                          >
+                            {subfolder.name}
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            {subfolder.count} {subfolder.count === 1 ? 'card' : 'cards'}
+                          </div>
+                        </div>
+                        <ChevronRight size={14} style={{ color: 'var(--text-muted)' }} />
                       </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 2. Direct Cards */}
+                {directCards.length > 0 ? (
+                  directCards.map(card => {
+                    const status = getRevisionStatusText(card.last_revised_at);
+                    return (
+                      <Link 
+                        href={`/card/${card.id}`} 
+                        key={card.id} 
+                        style={{ textDecoration: 'none', color: 'inherit' }}
+                      >
+                        <div className="glass-panel card-outer hover-scale-card">
+                          <div className="card-header-bar" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div className="card-title-group">
+                              <span className="card-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                📁 {card.folder_path && card.folder_path !== '/' ? card.folder_path : 'Root'}
+                              </span>
+                              <h2 className="card-title" style={{ fontSize: '1.25rem', marginTop: '0.2rem' }}>{card.title}</h2>
+                            </div>
+                            <div className="card-actions-top">
+                              <button 
+                                className="icon-btn delete" 
+                                onClick={(e) => {
+                                  e.preventDefault(); // prevent navigation
+                                  e.stopPropagation(); // stop click bubbling
+                                  handleDelete(card.id);
+                                }} 
+                                title="Delete card"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div 
+                            className="card-footer" 
+                            style={{ 
+                              borderTop: '1px solid var(--border-glass)', 
+                              padding: '0.85rem 1.5rem', 
+                              background: 'rgba(0, 0, 0, 0.03)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            <div className={`revise-indicator ${status.isDue ? 'due' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <Calendar size={14} />
+                              <span>{status.text}</span>
+                            </div>
+                            <span style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.75rem' }}>
+                              View Details →
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })
+                ) : (
+                  immediateSubfolders.length === 0 && (
+                    <div className="glass-panel empty-state">
+                      <div className="empty-state-icon">
+                        <BookOpen size={32} />
+                      </div>
+                      <h4 style={{ fontWeight: 600 }}>No Revision Cards Found</h4>
+                      <p style={{ fontSize: '0.85rem', maxHeight: '80px', maxWidth: '320px' }}>
+                        Your folder is empty. Create revision cards in this location to organize them.
+                      </p>
                     </div>
-                  </Link>
-                );
-              })
-            ) : (
-              <div className="glass-panel empty-state">
-                <div className="empty-state-icon">
-                  <BookOpen size={32} />
-                </div>
-                <h4 style={{ fontWeight: 600 }}>No Revision Cards Found</h4>
-                <p style={{ fontSize: '0.85rem', maxHeight: '80px', maxWidth: '320px' }}>
-                  {searchQuery 
-                    ? "Try adjusting your search query, or double check spelling."
-                    : "Your vault is empty. Record your first study concept using the microphone panel on the left!"
-                  }
-                </p>
-              </div>
+                  )
+                )}
+              </>
             )}
           </div>
 

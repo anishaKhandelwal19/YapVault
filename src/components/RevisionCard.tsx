@@ -170,6 +170,9 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
       {/* Card Header */}
       <div className="card-header-bar" style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #F1F5F9', background: '#FFFFFF' }}>
         <div className="card-title-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <span className="card-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', alignSelf: 'flex-start', fontSize: '0.75rem', fontWeight: 600, color: '#2563EB', background: 'rgba(37, 99, 235, 0.06)', padding: '0.2rem 0.6rem', borderRadius: '12px', width: 'fit-content' }}>
+            📁 {card.folder_path && card.folder_path !== '/' ? card.folder_path : 'Root'}
+          </span>
           <h2 className="card-title" style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0F172A', margin: 0 }}>{card.title}</h2>
         </div>
         <div className="card-actions-top" style={{ display: 'flex', gap: '0.35rem', alignSelf: 'flex-start' }}>

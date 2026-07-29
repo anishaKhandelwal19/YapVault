@@ -27,6 +27,7 @@ export interface RevisionCardData {
   chat_url?: string;
   how_to_explain?: string;
   repetition_count?: number;
+  folder_path?: string;
 }
 
 export interface UserStreak {
@@ -107,7 +108,8 @@ const parseSyncedCard = (c: any): RevisionCardData => {
     mastery_level: meta.mastery_level || c.mastery_level || 'new',
     chat_url: meta.chat_url || c.chat_url || undefined,
     how_to_explain: meta.how_to_explain || c.how_to_explain || undefined,
-    repetition_count: meta.repetition_count || c.repetition_count || 0
+    repetition_count: meta.repetition_count || c.repetition_count || 0,
+    folder_path: meta.folder_path || c.folder_path || "/"
   };
 };
 
@@ -143,7 +145,8 @@ export const saveCard = async (card: Omit<RevisionCardData, 'id' | 'created_at' 
     mastery_level: card.mastery_level || 'new',
     chat_url: card.chat_url,
     how_to_explain: card.how_to_explain,
-    repetition_count: card.repetition_count || 0
+    repetition_count: card.repetition_count || 0,
+    folder_path: card.folder_path || "/"
   };
 
   const serializedSummary = JSON.stringify(metaPayload);
