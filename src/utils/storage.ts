@@ -26,6 +26,7 @@ export interface RevisionCardData {
   mastery_level?: 'new' | 'learning' | 'mastered';
   chat_url?: string;
   how_to_explain?: string;
+  repetition_count?: number;
 }
 
 export interface UserStreak {
@@ -105,7 +106,8 @@ const parseSyncedCard = (c: any): RevisionCardData => {
     difficulty: meta.difficulty || c.difficulty || undefined,
     mastery_level: meta.mastery_level || c.mastery_level || 'new',
     chat_url: meta.chat_url || c.chat_url || undefined,
-    how_to_explain: meta.how_to_explain || c.how_to_explain || undefined
+    how_to_explain: meta.how_to_explain || c.how_to_explain || undefined,
+    repetition_count: meta.repetition_count || c.repetition_count || 0
   };
 };
 
@@ -140,7 +142,8 @@ export const saveCard = async (card: Omit<RevisionCardData, 'id' | 'created_at' 
     difficulty: card.difficulty,
     mastery_level: card.mastery_level || 'new',
     chat_url: card.chat_url,
-    how_to_explain: card.how_to_explain
+    how_to_explain: card.how_to_explain,
+    repetition_count: card.repetition_count || 0
   };
 
   const serializedSummary = JSON.stringify(metaPayload);
@@ -209,20 +212,42 @@ export const markRevised = async (id: string): Promise<{ card: RevisionCardData;
   if (supabase) {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const now = new Date().toISOString();
-      const { data, error } = await supabase
+      const { data: currentCard, error: fetchError } = await supabase
         .from('cards')
-        .update({ last_revised_at: now })
+        .select('*')
         .eq('id', id)
-        .select()
         .single();
       
-      if (!error && data) {
-        const streak = await updateStreak();
-        return {
-          card: parseSyncedCard(data),
-          streakUpdated: true
-        };
+      if (!fetchError && currentCard) {
+        let meta: any = {};
+        let summary = currentCard.ai_chat_summary || '';
+        if (summary.trim().startsWith('{')) {
+          try {
+            meta = JSON.parse(summary);
+          } catch(e) {}
+        }
+        
+        const now = new Date().toISOString();
+        meta.repetition_count = (meta.repetition_count || 0) + 1;
+        const serialized = JSON.stringify(meta);
+        
+        const { data, error } = await supabase
+          .from('cards')
+          .update({ 
+            last_revised_at: now,
+            ai_chat_summary: serialized
+          })
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (!error && data) {
+          const streak = await updateStreak();
+          return {
+            card: parseSyncedCard(data),
+            streakUpdated: true
+          };
+        }
       }
     }
   }
@@ -235,7 +260,8 @@ export const markRevised = async (id: string): Promise<{ card: RevisionCardData;
       streakUpdated = true;
       return {
         ...c,
-        last_revised_at: new Date().toISOString()
+        last_revised_at: new Date().toISOString(),
+        repetition_count: (c.repetition_count || 0) + 1
       };
     }
     return c;

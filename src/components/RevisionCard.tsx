@@ -19,17 +19,11 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
   const hasAiChat = !!(card.ai_chat_summary || card.ai_chat_detail);
   const [isExporting, setIsExporting] = useState(false);
   const [isRevisedAnimating, setIsRevisedAnimating] = useState(false);
-  const [mastery, setMastery] = useState<'new' | 'learning' | 'mastered'>(card.mastery_level || 'new');
 
   const [openQs, setOpenQs] = useState<Record<number, boolean>>({});
 
   const toggleQ = (index: number) => {
     setOpenQs(prev => ({ ...prev, [index]: !prev[index] }));
-  };
-
-  const handleMasteryChange = async (newMastery: 'new' | 'learning' | 'mastered') => {
-    setMastery(newMastery);
-    await updateMasteryLevel(card.id, newMastery);
   };
 
   const markdownComponents = {
@@ -98,10 +92,10 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
 
       const cloneConcept = clonedCard.querySelector('.tab-content-concept') as HTMLElement;
       const clonePrep = clonedCard.querySelector('.tab-content-prep') as HTMLElement;
-      const clonePitfalls = clonedCard.querySelector('.tab-content-pitfalls') as HTMLElement;
+      const cloneExplain = clonedCard.querySelector('.tab-content-explain') as HTMLElement;
       if (cloneConcept) cloneConcept.style.display = 'flex';
       if (clonePrep) clonePrep.style.display = 'flex';
-      if (clonePitfalls) clonePitfalls.style.display = 'flex';
+      if (cloneExplain) cloneExplain.style.display = 'flex';
 
       const cloneTabs = clonedCard.querySelector('.card-tabs');
       if (cloneTabs) cloneTabs.remove();
@@ -134,27 +128,18 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
     }
   };
 
-  const getRevisionSchedule = () => {
-    let nextReview = 'Today';
-    if (mastery === 'learning') nextReview = 'Tomorrow';
-    if (mastery === 'mastered') nextReview = 'In 4 days';
-
+  const getLastRevisedText = () => {
     if (!card.last_revised_at) {
-      return { lastText: 'Never revised', nextText: nextReview };
+      return 'Never revised';
     }
-    
     const lastDate = new Date(card.last_revised_at);
     const diffTime = Math.abs(new Date().getTime() - lastDate.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-    let lastText = 'Revised today';
-    if (diffDays === 1) lastText = 'Revised yesterday';
-    if (diffDays > 1) lastText = `Revised ${diffDays} days ago`;
-
-    return { lastText, nextText: nextReview };
+    if (diffDays === 0) return 'Revised today';
+    if (diffDays === 1) return 'Revised yesterday';
+    return `Revised ${diffDays} days ago`;
   };
-
-  const schedule = getRevisionSchedule();
 
 
   return (
@@ -515,25 +500,7 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
             </div>
           )}
 
-          {/* Related Concepts */}
-          {card.related_concepts && card.related_concepts.length > 0 && (
-            <div className="card-section-block" style={{ borderTop: '1px dashed #E2E8F0', paddingTop: '1.25rem' }}>
-              <span className="card-section-title" style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Related Concepts</span>
-              <div className="related-concepts-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {card.related_concepts.map((concept, i) => (
-                  <span key={i} className="concept-chip" style={{
-                    background: '#F1F5F9',
-                    color: '#475569',
-                    padding: '0.25rem 0.6rem',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    border: '1px solid #E2E8F0'
-                  }}>{concept}</span>
-                ))}
-              </div>
-            </div>
-          )}
+
         </div>
 
         {/* Tab 4: AI Chat (conditional) */}
@@ -649,53 +616,38 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
         gap: '0.75rem'
       }}>
         
-        {/* Progress psychology: New, Learning, Mastered */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+        {/* Progress: 5 repetition circles */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-            🔥 Revision Status
+            🔄 Repetitions ({(card.repetition_count || 0)})
           </span>
-          <div style={{ display: 'flex', gap: '0.25rem' }}>
-            {(['new', 'learning', 'mastered'] as const).map((level) => {
-              const isActive = mastery === level;
-              const levelLabels = { new: '○ New', learning: '◐ Learning', mastered: '● Mastered' };
-              const activeStyles = {
-                new: { bg: '#E2E8F0', text: '#475569' },
-                learning: { bg: '#FEF3C7', text: '#D97706' },
-                mastered: { bg: '#DCFCE7', text: '#15803D' }
-              };
-
+          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+            {Array.from({ length: 5 }).map((_, idx) => {
+              const isFilled = idx < (card.repetition_count || 0);
               return (
-                <button
-                  key={level}
-                  onClick={() => handleMasteryChange(level)}
+                <span 
+                  key={idx} 
                   style={{
-                    background: isActive ? activeStyles[level].bg : '#FFFFFF',
-                    color: isActive ? activeStyles[level].text : '#64748B',
-                    border: '1px solid ' + (isActive ? 'transparent' : '#E2E8F0'),
-                    padding: '0.2rem 0.5rem',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    border: '1px solid ' + (isFilled ? '#2563EB' : '#CBD5E1'),
+                    backgroundColor: isFilled ? '#2563EB' : 'transparent',
+                    display: 'inline-block',
+                    transition: 'all 0.2s ease'
                   }}
-                >
-                  {levelLabels[level]}
-                </button>
+                  title={`Repetition ${idx + 1}`}
+                />
               );
             })}
           </div>
         </div>
 
-        {/* Spaced Repetition Dates */}
+        {/* Revision Date */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-start' }}>
           <div style={{ fontSize: '0.75rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <Calendar size={12} />
-            <span>{schedule.lastText}</span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: '#2563EB', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <Sparkles size={12} />
-            <span>Next review: {schedule.nextText}</span>
+            <span>{getLastRevisedText()}</span>
           </div>
         </div>
 
