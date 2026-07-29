@@ -5,7 +5,7 @@ const apiKey = process.env.GEMINI_API_KEY;
 
 export async function POST(request: Request) {
   try {
-    const { transcript, audioData, mimeType } = await request.json();
+    const { transcript, audioData, mimeType, goal, customInstruction } = await request.json();
 
     if (!transcript && !audioData) {
       return NextResponse.json({ error: 'Either transcript or audioData is required' }, { status: 400 });
@@ -20,26 +20,39 @@ export async function POST(request: Request) {
 
     const ai = new GoogleGenAI({ apiKey });
 
-    const prompt = `You are a technical revision card assistant. ${
+    const prompt = `You are an expert technical learning assistant. ${
       audioData 
         ? "A user has just explained a concept in the attached audio recording." 
-        : `A user has just explained a concept. The explanation is: "${transcript}".`
+        : `A user has just provided the following content: "${transcript}".`
     }
+    
+    The user wants to achieve this specific learning goal:
+    **${goal || 'Create Revision Notes'}**
+    
+    Additional custom instructions from the user:
+    **${customInstruction || 'None'}**
+    
+    Generate output according to these rules, adapting your tone and focus perfectly to match the user's goal and instructions:
+    1. Format your text using Markdown. Use **bold** heavily for key terms, use bullet points instead of long paragraphs, and keep explanations concise (not too large, not too small, best fit for revision).
+    2. If the goal is "Explain Like Teacher", use analogies and simple language.
+    3. If the goal is "Concept Grouping", group related concepts clearly.
+    4. If the goal is "Flashcard Mode" or "Exam Questions", focus heavily on the 'interview_questions' output.
+    5. Fill out the structured fields below to build a comprehensive Revision Card.
     
     Your task:
-    1. Identify the core technical concept being discussed. ${
+    1. "title": Identify the core technical concept being discussed. ${
       audioData 
-        ? "Listen to the audio, transcribe it, and correct any phonetic transcription errors or mispronunciations by converting them into standard software developer terminology (proper casing, spelling, and spacing)." 
+        ? "Listen to the audio, transcribe it, and correct any phonetic transcription errors or mispronunciations by converting them into standard software developer terminology." 
         : "Correct any spelling or phrasing errors."
     }
-    2. Write a clear, concise definition.
-    3. Explain how it works in detail. Include a brief, clean code example or command block in markdown where appropriate.
-    4. List 3 key real-world use cases.
-    5. Formulate 2 typical placement interview questions and their concise, technical answers for this topic.
-    6. Detail 2 common mistakes or pitfalls students make when explaining this concept in interviews.
-    7. List 3 closely related technical concepts.
+    2. "definition": Write a clear, concise definition with bold terms.
+    3. "how_it_works": Explain the mechanics, grouped concepts, or detailed notes in detail. Use Markdown bullet points or numbered lists.
+    4. "use_cases": List 3 real-world use cases.
+    5. "interview_questions": Formulate 2-4 Q&A pairs, flashcards, or exam questions based on the goal.
+    6. "common_mistakes": List 2 pitfalls or confusions students make.
+    7. "related_concepts": List 3 closely related technical concepts.
     
-    Ensure the response is fully complete and structured exactly as specified.`;
+    Ensure the response is fully complete, highly readable for a student, and structured exactly as specified.`;
 
     let contents: any;
     if (audioData && mimeType) {
@@ -70,8 +83,8 @@ export async function POST(request: Request) {
           type: 'OBJECT',
           properties: {
             title: { type: 'STRING', description: 'The formal, capitalized name of the concept.' },
-            definition: { type: 'STRING', description: 'A clear 2-3 sentence definition.' },
-            how_it_works: { type: 'STRING', description: 'Detailed mechanics of how it works under the hood. Include clear formatting or code snippets in markdown if useful.' },
+            definition: { type: 'STRING', description: 'A clear concise definition with bold terms.' },
+            how_it_works: { type: 'STRING', description: 'Detailed mechanics or grouped concepts using markdown lists.' },
             use_cases: {
               type: 'ARRAY',
               items: { type: 'STRING' },
@@ -87,17 +100,17 @@ export async function POST(request: Request) {
                 },
                 required: ['question', 'answer']
               },
-              description: 'Common technical interview questions and their answers.'
+              description: 'Flashcards or exam questions based on the content.'
             },
             common_mistakes: {
               type: 'ARRAY',
               items: { type: 'STRING' },
-              description: 'Mistakes to avoid in interviews.'
+              description: 'Mistakes or confusions to avoid.'
             },
             related_concepts: {
               type: 'ARRAY',
               items: { type: 'STRING' },
-              description: 'Prerequisites or related technical topics.'
+              description: 'Related technical topics.'
             }
           },
           required: [

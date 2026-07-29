@@ -14,6 +14,16 @@ export interface RevisionCardData {
   created_at: string;
   ai_chat_summary?: string;
   ai_chat_detail?: string;
+  
+  // New fields:
+  mental_model?: string;
+  remember_this?: string;
+  key_trick?: string;
+  complexity_time?: string;
+  complexity_space?: string;
+  tags?: string[];
+  difficulty?: string;
+  mastery_level?: 'new' | 'learning' | 'mastered';
 }
 
 export interface UserStreak {
@@ -61,6 +71,40 @@ const getLocalStreakOnly = (): UserStreak => {
 // ASYNC API METHODS (CLOUD SYNC + LOCAL FALLBACK)
 // ==========================================================================
 
+const parseSyncedCard = (c: any): RevisionCardData => {
+  let meta: any = {};
+  let summary = c.ai_chat_summary || '';
+  if (summary.trim().startsWith('{')) {
+    try {
+      meta = JSON.parse(summary);
+      summary = meta.summary || '';
+    } catch(e) {}
+  }
+  return {
+    id: c.id,
+    title: c.title,
+    definition: c.definition,
+    how_it_works: c.how_it_works || '',
+    use_cases: c.use_cases || [],
+    interview_questions: c.interview_questions || [],
+    common_mistakes: c.common_mistakes || [],
+    related_concepts: c.related_concepts || [],
+    last_revised_at: c.last_revised_at,
+    created_at: c.created_at,
+    ai_chat_summary: summary || undefined,
+    ai_chat_detail: c.ai_chat_detail || undefined,
+    
+    mental_model: meta.mental_model || c.mental_model || undefined,
+    remember_this: meta.remember_this || c.remember_this || undefined,
+    key_trick: meta.key_trick || c.key_trick || undefined,
+    complexity_time: meta.complexity_time || c.complexity_time || undefined,
+    complexity_space: meta.complexity_space || c.complexity_space || undefined,
+    tags: meta.tags || c.tags || undefined,
+    difficulty: meta.difficulty || c.difficulty || undefined,
+    mastery_level: meta.mastery_level || c.mastery_level || 'new'
+  };
+};
+
 export const getCards = async (): Promise<RevisionCardData[]> => {
   if (supabase) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -70,42 +114,47 @@ export const getCards = async (): Promise<RevisionCardData[]> => {
         .select('*')
         .order('created_at', { ascending: false });
       if (!error && data) {
-        return data.map((c: any) => ({
-          id: c.id,
-          title: c.title,
-          definition: c.definition,
-          how_it_works: c.how_it_works || '',
-          use_cases: c.use_cases || [],
-          interview_questions: c.interview_questions || [],
-          common_mistakes: c.common_mistakes || [],
-          related_concepts: c.related_concepts || [],
-          last_revised_at: c.last_revised_at,
-          created_at: c.created_at,
-          ai_chat_summary: c.ai_chat_summary || undefined,
-          ai_chat_detail: c.ai_chat_detail || undefined
-        }));
+        return data.map((c: any) => parseSyncedCard(c));
       }
     }
   }
-  return getLocalCardsOnly();
+  return getLocalCardsOnly().map(c => ({
+    ...c,
+    mastery_level: c.mastery_level || 'new'
+  }));
 };
 
 export const saveCard = async (card: Omit<RevisionCardData, 'id' | 'created_at' | 'last_revised_at'>): Promise<RevisionCardData> => {
+  const metaPayload = {
+    summary: card.ai_chat_summary || '',
+    mental_model: card.mental_model,
+    remember_this: card.remember_this,
+    key_trick: card.key_trick,
+    complexity_time: card.complexity_time,
+    complexity_space: card.complexity_space,
+    tags: card.tags,
+    difficulty: card.difficulty,
+    mastery_level: card.mastery_level || 'new'
+  };
+
+  const serializedSummary = JSON.stringify(metaPayload);
+
   if (supabase) {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const insertPayload: any = {
-          user_id: user.id,
-          title: card.title,
-          definition: card.definition,
-          how_it_works: card.how_it_works,
-          use_cases: card.use_cases,
-          interview_questions: card.interview_questions,
-          common_mistakes: card.common_mistakes,
-          related_concepts: card.related_concepts
-        };
-      if (card.ai_chat_summary) insertPayload.ai_chat_summary = card.ai_chat_summary;
+        user_id: user.id,
+        title: card.title,
+        definition: card.definition,
+        how_it_works: card.how_it_works,
+        use_cases: card.use_cases,
+        interview_questions: card.interview_questions,
+        common_mistakes: card.common_mistakes,
+        related_concepts: card.related_concepts,
+        ai_chat_summary: serializedSummary
+      };
       if (card.ai_chat_detail) insertPayload.ai_chat_detail = card.ai_chat_detail;
+      
       const { data, error } = await supabase
         .from('cards')
         .insert(insertPayload)
@@ -113,20 +162,7 @@ export const saveCard = async (card: Omit<RevisionCardData, 'id' | 'created_at' 
         .single();
       
       if (!error && data) {
-        return {
-          id: data.id,
-          title: data.title,
-          definition: data.definition,
-          how_it_works: data.how_it_works || '',
-          use_cases: data.use_cases || [],
-          interview_questions: data.interview_questions || [],
-          common_mistakes: data.common_mistakes || [],
-          related_concepts: data.related_concepts || [],
-          last_revised_at: data.last_revised_at,
-          created_at: data.created_at,
-          ai_chat_summary: data.ai_chat_summary || undefined,
-          ai_chat_detail: data.ai_chat_detail || undefined
-        };
+        return parseSyncedCard(data);
       }
     }
   }
@@ -138,8 +174,7 @@ export const saveCard = async (card: Omit<RevisionCardData, 'id' | 'created_at' 
     id: Math.random().toString(36).substring(2, 9),
     created_at: new Date().toISOString(),
     last_revised_at: null,
-    ai_chat_summary: card.ai_chat_summary || undefined,
-    ai_chat_detail: card.ai_chat_detail || undefined
+    mastery_level: card.mastery_level || 'new'
   };
   cards.unshift(newCard);
   localStorage.setItem(CARDS_KEY, JSON.stringify(cards));
@@ -179,25 +214,86 @@ export const markRevised = async (id: string): Promise<{ card: RevisionCardData;
       if (!error && data) {
         const streak = await updateStreak();
         return {
-          card: {
-            id: data.id,
-            title: data.title,
-            definition: data.definition,
-            how_it_works: data.how_it_works || '',
-            use_cases: data.use_cases || [],
-            interview_questions: data.interview_questions || [],
-            common_mistakes: data.common_mistakes || [],
-            related_concepts: data.related_concepts || [],
-            last_revised_at: data.last_revised_at,
-            created_at: data.created_at,
-            ai_chat_summary: data.ai_chat_summary || undefined,
-            ai_chat_detail: data.ai_chat_detail || undefined
-          },
+          card: parseSyncedCard(data),
           streakUpdated: true
         };
       }
     }
   }
+
+  // Local fallback
+  const cards = getLocalCardsOnly();
+  let streakUpdated = false;
+  const updatedCards = cards.map(c => {
+    if (c.id === id) {
+      streakUpdated = true;
+      return {
+        ...c,
+        last_revised_at: new Date().toISOString()
+      };
+    }
+    return c;
+  });
+  
+  localStorage.setItem(CARDS_KEY, JSON.stringify(updatedCards));
+  if (streakUpdated) {
+    await updateStreak();
+  }
+  
+  const updatedCard = updatedCards.find(c => c.id === id)!;
+  return { card: updatedCard, streakUpdated };
+};
+
+export const updateMasteryLevel = async (id: string, mastery: 'new' | 'learning' | 'mastered'): Promise<RevisionCardData> => {
+  if (supabase) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: currentCard, error: fetchError } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (!fetchError && currentCard) {
+        let meta: any = {};
+        let summary = currentCard.ai_chat_summary || '';
+        if (summary.trim().startsWith('{')) {
+          try {
+            meta = JSON.parse(summary);
+          } catch(e) {}
+        }
+        
+        meta.mastery_level = mastery;
+        const serialized = JSON.stringify(meta);
+
+        const { data, error } = await supabase
+          .from('cards')
+          .update({ ai_chat_summary: serialized })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (!error && data) {
+          return parseSyncedCard(data);
+        }
+      }
+    }
+  }
+
+  // Local fallback
+  const cards = getLocalCardsOnly();
+  const updatedCards = cards.map(c => {
+    if (c.id === id) {
+      return {
+        ...c,
+        mastery_level: mastery
+      };
+    }
+    return c;
+  });
+  localStorage.setItem(CARDS_KEY, JSON.stringify(updatedCards));
+  return updatedCards.find(c => c.id === id)!;
+};
 
   // Local fallback
   const cards = getLocalCardsOnly();

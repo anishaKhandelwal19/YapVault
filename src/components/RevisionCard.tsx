@@ -2,8 +2,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Trash2, Share2, CheckCircle, Calendar, Sparkles, BookOpen, GraduationCap, AlertTriangle, MessageSquareText } from 'lucide-react';
+import { Trash2, Share2, CheckCircle, Calendar, Sparkles, BookOpen, GraduationCap, AlertTriangle, MessageSquareText, ChevronDown, ChevronUp } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { RevisionCardData, markRevised } from '../utils/storage';
 
 interface RevisionCardProps {
@@ -18,40 +20,40 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
   const [isExporting, setIsExporting] = useState(false);
   const [isRevisedAnimating, setIsRevisedAnimating] = useState(false);
 
-  // Simple custom parser for code blocks (```lang ... ```) and inline code (`code`)
-  const renderFormattedText = (text: string) => {
-    if (!text) return null;
-    const parts = text.split(/(```[\s\S]*?```|`[^`\n]+`)/g);
-    return parts.map((part, index) => {
-      if (part.startsWith('```') && part.endsWith('```')) {
-        const lines = part.slice(3, -3).trim().split('\n');
-        const hasLang = /^[a-zA-Z0-9+#-]+$/.test(lines[0] || '');
-        const code = hasLang ? lines.slice(1).join('\n') : lines.join('\n');
-        return (
-          <pre key={index} className="card-how-works">
-            <code>{code}</code>
-          </pre>
-        );
-      } else if (part.startsWith('`') && part.endsWith('`')) {
-        return (
-          <code 
-            key={index} 
-            style={{
-              background: 'rgba(99, 102, 241, 0.12)',
-              border: '1px solid rgba(99, 102, 241, 0.25)',
-              padding: '0.15rem 0.35rem',
-              borderRadius: '4px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '0.85em',
-              color: 'var(--accent-primary)'
-            }}
-          >
-            {part.slice(1, -1)}
+  const [openQs, setOpenQs] = useState<Record<number, boolean>>({});
+
+  const toggleQ = (index: number) => {
+    setOpenQs(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const markdownComponents = {
+    code({ node, className, children, ...props }: any) {
+      const match = /language-(\w+)/.exec(className || '');
+      const isInline = !match && !String(children).includes('\n');
+      return !isInline ? (
+        <pre className="card-how-works">
+          <code className={className} {...props}>
+            {children}
           </code>
-        );
-      }
-      return <span key={index}>{part}</span>;
-    });
+        </pre>
+      ) : (
+        <code 
+          className="inline-code"
+          style={{
+            background: 'rgba(99, 102, 241, 0.12)',
+            border: '1px solid rgba(99, 102, 241, 0.25)',
+            padding: '0.15rem 0.35rem',
+            borderRadius: '4px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.85em',
+            color: 'var(--accent-primary)'
+          }}
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    }
   };
 
   const handleMarkRevised = () => {
@@ -235,14 +237,18 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
           {/* Definition */}
           <div className="card-section-block">
             <span className="card-section-title">Definition</span>
-            <p className="card-definition">{card.definition}</p>
+            <div className="card-definition markdown-prose">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{card.definition}</ReactMarkdown>
+            </div>
           </div>
 
           {/* How It Works (Code) */}
           {card.how_it_works && (
             <div className="card-section-block">
-              <span className="card-section-title">How It Works</span>
-              <div>{renderFormattedText(card.how_it_works)}</div>
+              <span className="card-section-title">Details / How It Works</span>
+              <div className="markdown-prose">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{card.how_it_works}</ReactMarkdown>
+              </div>
             </div>
           )}
         </div>
@@ -264,12 +270,21 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
           {/* Interview Questions */}
           {card.interview_questions && card.interview_questions.length > 0 && (
             <div className="card-section-block">
-              <span className="card-section-title">Interview Questions</span>
+              <span className="card-section-title">Interview Questions (Active Recall)</span>
               <div className="interview-q-list">
                 {card.interview_questions.map((item, i) => (
-                  <div key={i} className="interview-q-item">
-                    <p className="interview-question">Q: {item.question}</p>
-                    <p className="interview-answer">A: {item.answer}</p>
+                  <div key={i} className="interview-q-item" onClick={() => toggleQ(i)} style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <p className="interview-question">Q: {item.question}</p>
+                      {openQs[i] ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
+                    </div>
+                    {openQs[i] ? (
+                      <div className="interview-answer markdown-prose">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{item.answer}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.5rem' }}>Click to reveal answer...</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -333,10 +348,12 @@ export default function RevisionCard({ card, onDelete, onRevise }: RevisionCardP
                     return (
                       <div 
                         key={i} 
-                        className={`chat-message ${isQuestion ? 'chat-msg-user' : isAnswer ? 'chat-msg-ai' : 'chat-msg-ai'}`}
+                        className={`chat-message ${isQuestion ? 'chat-msg-user' : 'chat-msg-ai'}`}
                       >
                         <span className="chat-msg-label">{isQuestion ? 'You' : 'AI'}</span>
-                        <div className="chat-msg-content">{renderFormattedText(content)}</div>
+                        <div className="chat-msg-content markdown-prose">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{content}</ReactMarkdown>
+                        </div>
                       </div>
                     );
                   })}

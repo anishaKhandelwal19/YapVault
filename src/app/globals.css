@@ -1301,3 +1301,75 @@ body {
   letter-spacing: 0.02em;
   transition: color 0.2s ease;
 }
+
+/* Markdown Rendering Styles */
+.markdown-prose {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.markdown-prose p {
+  margin-bottom: 0.75rem;
+}
+
+.markdown-prose p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-prose ul, .markdown-prose ol {
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-prose li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-prose strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.markdown-prose h1, .markdown-prose h2, .markdown-prose h3 {
+  color: var(--text-primary);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+}
+
+.markdown-prose code:not(.card-how-works code) {
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--accent-primary);
+}
+
+.markdown-prose pre {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Accordion Q&A Hidden State */
+.interview-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+  padding-top: 0;
+}
+
+.interview-q-item:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.05);
+}
+
+.interview-answer.markdown-prose {
+  max-height: 1000px; /* high enough value to allow transition */
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border-glass);
+  margin-top: 0.75rem;
+}
+

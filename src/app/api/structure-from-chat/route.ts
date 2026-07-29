@@ -6,15 +6,15 @@ const MAX_CHAT_LENGTH = 50000;
 
 export async function POST(request: Request) {
   try {
-    const { chatText } = await request.json();
+    const { chatText, goal, customInstruction } = await request.json();
 
     if (!chatText || typeof chatText !== 'string' || chatText.trim().length === 0) {
-      return NextResponse.json({ error: 'Chat text is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
     if (chatText.length > MAX_CHAT_LENGTH) {
       return NextResponse.json(
-        { error: `Chat text exceeds maximum length of ${MAX_CHAT_LENGTH} characters. Please trim your conversation.` },
+        { error: `Content exceeds maximum length of ${MAX_CHAT_LENGTH} characters. Please trim your text.` },
         { status: 400 }
       );
     }
@@ -28,33 +28,38 @@ export async function POST(request: Request) {
 
     const ai = new GoogleGenAI({ apiKey });
 
-    const prompt = `You are a technical revision card assistant. A user has pasted a conversation they had with an AI assistant (could be from ChatGPT, Claude, Gemini, or any other AI). The conversation is:
+    const prompt = `You are an expert technical learning assistant.
 
+Analyze the following content:
 """
 ${chatText.trim()}
 """
 
-Your task:
-1. Identify the CORE technical concept being discussed in this conversation.
-2. Write a clear, concise definition of that concept.
-3. Explain how it works in detail. Include a brief, clean code example or command block in markdown where appropriate.
-4. List 3 key real-world use cases.
-5. Formulate 2 typical placement interview questions and their concise, technical answers for this topic.
-6. Detail 2 common mistakes or pitfalls students make when explaining this concept in interviews.
-7. List 3 closely related technical concepts.
-8. Write "ai_chat_summary": a clean, concise bullet-point summary (as a single string with bullet points using "• " prefix) of the KEY LEARNINGS from this conversation. Focus on what the user actually learned. Keep it to 4-6 bullet points.
-9. Write "ai_chat_detail": This is the CURATED version of the conversation. Go through the entire chat and keep ONLY the parts that:
-   - Explain the core concept clearly
-   - Cover interview-relevant questions and answers
-   - Contain important technical details, examples, or code
-   
-   REMOVE everything else: greetings, filler, off-topic tangents, meta-conversation ("thanks", "sure", "can you also..."), and any parts unrelated to the core technical concept.
-   
-   Format the curated chat as a clean Q&A style conversation using this format:
-   "Q: [user's question or prompt, cleaned up]\nA: [AI's relevant answer, preserved but cleaned]"
-   Separate each Q&A pair with a blank line. Preserve code blocks and technical details in the answers.
+The user wants to achieve this specific learning goal:
+**${goal || 'Create Revision Notes'}**
 
-Ensure the response is fully complete and structured exactly as specified.`;
+Additional custom instructions from the user:
+**${customInstruction || 'None'}**
+
+Generate output according to these rules, adapting your tone and focus to perfectly match the user's goal and instructions:
+1. Format your text using Markdown. Use **bold** heavily for key terms, use bullet points instead of long paragraphs, and keep explanations concise (not too large, not too small, best fit for revision).
+2. If the goal is "Explain Like Teacher", use analogies and simple language.
+3. If the goal is "Concept Grouping", group related concepts clearly.
+4. If the goal is "Flashcard Mode" or "Exam Questions", focus heavily on the 'interview_questions' output.
+5. Fill out the structured fields below to build a comprehensive Revision Card.
+
+Your task is to extract/generate:
+1. "title": Identify the core topic.
+2. "definition": Write a clear, concise definition (1-2 sentences). Use **bold** for key terms.
+3. "how_it_works": Explain the mechanics, grouped concepts, or detailed notes in detail. Use Markdown bullet points or numbered lists. DO NOT write massive paragraphs.
+4. "use_cases": List 3 real-world use cases.
+5. "interview_questions": Formulate 2-4 Q&A pairs (or flashcards/exam questions) based on the goal.
+6. "common_mistakes": List 2 pitfalls or confusions.
+7. "related_concepts": List 3 related topics.
+8. "ai_chat_summary": Write a concise bullet-point summary (using "• " prefix) of the most important takeaways or facts to memorize.
+9. "ai_chat_detail": If the input was a chat, clean it into Q&A. If it was notes, provide an "Important Points Extraction" or "Mind Map" representation here in clean Markdown.
+
+Ensure the response is fully complete, highly readable for a student, and structured exactly as specified.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -65,8 +70,8 @@ Ensure the response is fully complete and structured exactly as specified.`;
           type: 'OBJECT',
           properties: {
             title: { type: 'STRING', description: 'The formal, capitalized name of the concept.' },
-            definition: { type: 'STRING', description: 'A clear 2-3 sentence definition.' },
-            how_it_works: { type: 'STRING', description: 'Detailed mechanics of how it works under the hood. Include clear formatting or code snippets in markdown if useful.' },
+            definition: { type: 'STRING', description: 'A clear concise definition with bold terms.' },
+            how_it_works: { type: 'STRING', description: 'Detailed mechanics or grouped concepts using markdown lists.' },
             use_cases: {
               type: 'ARRAY',
               items: { type: 'STRING' },
@@ -82,25 +87,25 @@ Ensure the response is fully complete and structured exactly as specified.`;
                 },
                 required: ['question', 'answer']
               },
-              description: 'Common technical interview questions and their answers.'
+              description: 'Flashcards or exam questions based on the content.'
             },
             common_mistakes: {
               type: 'ARRAY',
               items: { type: 'STRING' },
-              description: 'Mistakes to avoid in interviews.'
+              description: 'Mistakes or confusions to avoid.'
             },
             related_concepts: {
               type: 'ARRAY',
               items: { type: 'STRING' },
-              description: 'Prerequisites or related technical topics.'
+              description: 'Related technical topics.'
             },
             ai_chat_summary: {
               type: 'STRING',
-              description: 'Bullet-point summary of key learnings from the conversation. Each bullet starts with "• ".'
+              description: 'Bullet-point summary of key takeaways/memorization points. Each bullet starts with "• ".'
             },
             ai_chat_detail: {
               type: 'STRING',
-              description: 'Curated Q&A version of the chat with only concept explanation and interview-relevant content preserved.'
+              description: 'Curated Q&A, important extraction, or markdown mind-map representation.'
             }
           },
           required: [
@@ -131,3 +136,4 @@ Ensure the response is fully complete and structured exactly as specified.`;
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
+

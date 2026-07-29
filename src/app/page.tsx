@@ -40,6 +40,8 @@ export default function Dashboard() {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [chatText, setChatText] = useState('');
+  const [goal, setGoal] = useState('Create Revision Notes');
+  const [customInstruction, setCustomInstruction] = useState('');
   const MAX_CHAT_CHARS = 50000;
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [audioMimeType, setAudioMimeType] = useState<string>('');
@@ -475,8 +477,8 @@ export default function Dashboard() {
 
     try {
       const payload = inputMode === 'voice'
-        ? { audioData: audioBase64, mimeType: audioMimeType }
-        : { transcript };
+        ? { audioData: audioBase64, mimeType: audioMimeType, goal, customInstruction }
+        : { transcript, goal, customInstruction };
 
       const response = await fetch('/api/structure-card', {
         method: 'POST',
@@ -527,7 +529,7 @@ export default function Dashboard() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ chatText }),
+        body: JSON.stringify({ chatText, goal, customInstruction }),
       });
 
       const data = await response.json();
@@ -693,6 +695,53 @@ export default function Dashboard() {
               </button>
             </div>
 
+            {/* Goal & Custom Instruction Selector */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap', width: '100%' }}>
+              <select
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: '200px',
+                  padding: '0.6rem 1rem',
+                  borderRadius: '8px',
+                  background: 'rgba(0,0,0,0.02)',
+                  border: '1px solid var(--border-glass)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9rem',
+                  fontFamily: 'var(--font-sans)',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="Summarize">Summarize</option>
+                <option value="Summarize + Highlight Important Points">Summarize + Highlight Important Points</option>
+                <option value="Extract Important Topics">Extract Important Topics</option>
+                <option value="Explain Concepts Simply">Explain Concepts Simply</option>
+                <option value="Group Similar Concepts & Summarize">Group Similar Concepts & Summarize</option>
+                <option value="Create Revision Notes">Create Revision Notes</option>
+                <option value="Create Flashcards">Create Flashcards</option>
+                <option value="Find Possible Exam Questions">Find Possible Exam Questions</option>
+                <option value="Generate Mind Map">Generate Mind Map</option>
+              </select>
+              <input
+                type="text"
+                value={customInstruction}
+                onChange={(e) => setCustomInstruction(e.target.value)}
+                placeholder="Optional: Custom instructions (e.g., Focus on exam perspective)"
+                style={{
+                  flex: 2,
+                  minWidth: '250px',
+                  padding: '0.6rem 1rem',
+                  borderRadius: '8px',
+                  background: 'rgba(0,0,0,0.02)',
+                  border: '1px solid var(--border-glass)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9rem',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              />
+            </div>
+
             {inputMode === 'voice' ? (
               <>
                 <div className="record-btn-container">
@@ -793,27 +842,29 @@ export default function Dashboard() {
             ) : null}
 
             {inputMode === 'text' && (
-              <textarea
-                className="concept-textarea"
-                placeholder="Explain your technical concept here... (e.g. What is it, how does it work, when to use it)"
-                value={transcript}
-                onChange={(e) => setTranscript(e.target.value)}
-                style={{
-                  width: '100%',
-                  height: '150px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid var(--border-glass)',
-                  borderRadius: '8px',
-                  padding: '0.75rem',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.9rem',
-                  resize: 'none',
-                  outline: 'none',
-                  fontFamily: 'inherit',
-                  boxSizing: 'border-box',
-                  marginBottom: '0.5rem'
-                }}
-              />
+              <>
+                <textarea
+                  className="concept-textarea"
+                  placeholder="Paste your notes, textbook content, or lecture text here..."
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '150px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid var(--border-glass)',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9rem',
+                    resize: 'none',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box',
+                    marginBottom: '0.5rem'
+                  }}
+                />
+              </>
             )}
 
             {inputMode === 'chat' && (
@@ -822,6 +873,7 @@ export default function Dashboard() {
                   <MessageSquareText size={18} style={{ color: 'var(--accent-primary)' }} />
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Paste your AI conversation below. We'll extract the concept & build your card.</span>
                 </div>
+                
                 <div style={{ position: 'relative' }}>
                   <textarea
                     className="concept-textarea"
