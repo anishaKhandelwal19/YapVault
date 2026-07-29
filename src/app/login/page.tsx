@@ -85,9 +85,16 @@ export default function LoginPage() {
         });
         if (error) throw error;
         
-        // Sync local storage cards to the cloud
-        await syncLocalCardsToCloud();
-        setSuccessMsg('Logged in successfully! Redirecting...');
+        // Sync local storage cards to the cloud (home also retries on SIGNED_IN / INITIAL_SESSION)
+        const syncResult = await syncLocalCardsToCloud();
+        if (!syncResult.ok && !syncResult.skipped) {
+          console.error('[login] local→cloud sync failed:', syncResult.error);
+          setSuccessMsg('Logged in. Syncing local cards failed — will retry on home.');
+        } else if (syncResult.synced > 0) {
+          setSuccessMsg(`Logged in! Synced ${syncResult.synced} local card(s). Redirecting...`);
+        } else {
+          setSuccessMsg('Logged in successfully! Redirecting...');
+        }
         setTimeout(() => {
           router.push('/');
           router.refresh();

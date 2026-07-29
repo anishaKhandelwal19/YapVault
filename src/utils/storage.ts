@@ -506,46 +506,142 @@ export const updateStreak = async (): Promise<UserStreak> => {
 // DATA MIGRATION ON SUCCESSFUL SIGN IN
 // ==========================================================================
 
-export const syncLocalCardsToCloud = async (): Promise<void> => {
-  if (!supabase) return;
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+export type SyncLocalResult = {
+  ok: boolean;
+  synced: number;
+  skipped: boolean;
+  error?: string;
+};
 
-  const localCards = getLocalCardsOnly();
-  if (localCards.length === 0) return;
-
-  // 1. Upload cards
-  for (const card of localCards) {
-    const syncPayload: any = {
-      user_id: user.id,
-      title: card.title,
-      definition: card.definition,
-      how_it_works: card.how_it_works,
-      use_cases: card.use_cases,
-      interview_questions: card.interview_questions,
-      common_mistakes: card.common_mistakes,
-      related_concepts: card.related_concepts,
-      created_at: card.created_at,
-      last_revised_at: card.last_revised_at
-    };
-    if (card.ai_chat_summary) syncPayload.ai_chat_summary = card.ai_chat_summary;
-    if (card.ai_chat_detail) syncPayload.ai_chat_detail = card.ai_chat_detail;
-    await supabase.from('cards').insert(syncPayload);
+/** Pack optional meta into ai_chat_summary JSON (same shape as saveCard / parseSyncedCard). */
+const serializeCardMeta = (card: RevisionCardData): string => {
+  const existing = card.ai_chat_summary?.trim();
+  if (existing?.startsWith('{')) {
+    return existing;
   }
+  return JSON.stringify({
+    summary: card.ai_chat_summary || '',
+    mental_model: card.mental_model,
+    remember_this: card.remember_this,
+    key_trick: card.key_trick,
+    complexity_time: card.complexity_time,
+    complexity_space: card.complexity_space,
+    tags: card.tags,
+    difficulty: card.difficulty,
+    mastery_level: card.mastery_level || 'new',
+    chat_url: card.chat_url,
+    how_to_explain: card.how_to_explain,
+    repetition_count: card.repetition_count || 0,
+    folder_path: card.folder_path || '/'
+  });
+};
 
-  // 2. Upload streak profile
-  const localStreak = getLocalStreakOnly();
-  if (localStreak.count > 0 && localStreak.lastRevisedDate) {
-    await supabase.from('user_profiles').upsert({
-      id: user.id,
-      streak: localStreak.count,
-      last_revised_date: localStreak.lastRevisedDate
-    });
+const buildCloudInsertPayload = (card: RevisionCardData, userId: string) => {
+  const payload: Record<string, unknown> = {
+    user_id: userId,
+    title: card.title,
+    definition: card.definition,
+    how_it_works: card.how_it_works || '',
+    use_cases: card.use_cases || [],
+    interview_questions: card.interview_questions || [],
+    common_mistakes: card.common_mistakes || [],
+    related_concepts: card.related_concepts || [],
+    created_at: card.created_at,
+    last_revised_at: card.last_revised_at,
+    ai_chat_summary: serializeCardMeta(card)
+  };
+  if (card.ai_chat_detail) {
+    payload.ai_chat_detail = card.ai_chat_detail;
   }
+  return payload;
+};
 
-  // 3. Clean local storage after successful sync
-  localStorage.removeItem(CARDS_KEY);
-  localStorage.removeItem(STREAK_KEY);
+let syncInFlight: Promise<SyncLocalResult> | null = null;
+
+/**
+ * Upload localStorage cards (+ streak) to Supabase after auth.
+ * Clears local keys only when uploads succeed. Concurrent callers share one in-flight run.
+ */
+export const syncLocalCardsToCloud = async (): Promise<SyncLocalResult> => {
+  if (syncInFlight) return syncInFlight;
+
+  syncInFlight = (async (): Promise<SyncLocalResult> => {
+    if (!supabase) {
+      return { ok: true, synced: 0, skipped: true };
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      console.error('[syncLocalCardsToCloud] getUser failed:', userError.message);
+      return { ok: false, synced: 0, skipped: false, error: userError.message };
+    }
+    if (!user) {
+      return { ok: true, synced: 0, skipped: true };
+    }
+
+    const localCards = getLocalCardsOnly();
+    const localStreak = getLocalStreakOnly();
+    const hasStreak =
+      localStreak.count > 0 && Boolean(localStreak.lastRevisedDate);
+
+    if (localCards.length === 0 && !hasStreak) {
+      return { ok: true, synced: 0, skipped: true };
+    }
+
+    let synced = 0;
+
+    if (localCards.length > 0) {
+      const payloads = localCards.map((card) => buildCloudInsertPayload(card, user.id));
+      const { error: insertError } = await supabase.from('cards').insert(payloads);
+
+      if (insertError) {
+        console.error('[syncLocalCardsToCloud] cards insert failed:', insertError.message, insertError);
+        return {
+          ok: false,
+          synced: 0,
+          skipped: false,
+          error: insertError.message
+        };
+      }
+
+      // Clear cards immediately so a later streak failure does not duplicate on retry
+      localStorage.removeItem(CARDS_KEY);
+      synced = localCards.length;
+    }
+
+    if (hasStreak) {
+      const { error: profileError } = await supabase.from('user_profiles').upsert({
+        id: user.id,
+        streak: localStreak.count,
+        last_revised_date: localStreak.lastRevisedDate
+      });
+
+      if (profileError) {
+        console.error('[syncLocalCardsToCloud] user_profiles upsert failed:', profileError.message, profileError);
+        return {
+          ok: false,
+          synced,
+          skipped: false,
+          error: profileError.message
+        };
+      }
+
+      localStorage.removeItem(STREAK_KEY);
+    }
+
+    console.info(
+      `[syncLocalCardsToCloud] synced ${synced} card(s)` +
+        (hasStreak ? ' and streak' : '')
+    );
+
+    return { ok: true, synced, skipped: false };
+  })();
+
+  try {
+    return await syncInFlight;
+  } finally {
+    syncInFlight = null;
+  }
 };
 
 // Pick daily motivation quote

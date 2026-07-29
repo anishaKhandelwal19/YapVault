@@ -31,6 +31,7 @@ import {
   saveCard, 
   deleteCard, 
   clientSearchCards, 
+  syncLocalCardsToCloud,
   RevisionCardData 
 } from '../utils/storage';interface DirectoryNode {
   name: string;
@@ -141,8 +142,24 @@ export default function Dashboard() {
         setUser(session?.user ?? null);
       });
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // OAuth returns here; also covers SIGNED_IN after password login.
+      // Defer sync off the auth callback to avoid supabase-js auth lock deadlocks.
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         setUser(session?.user ?? null);
+
+        if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+          setTimeout(() => {
+            syncLocalCardsToCloud().then((result) => {
+              if (!result.ok && !result.skipped) {
+                console.error('[auth] local→cloud sync failed:', result.error);
+              }
+              if (result.synced > 0) {
+                setStreakCounter((prev) => prev + 1);
+              }
+            });
+          }, 0);
+        }
+
         setStreakCounter(prev => prev + 1); // trigger list refresh on sign in/out
       });
 
